@@ -43,11 +43,13 @@ use Glpi\Form\AccessControl\ControlType\ControlTypeInterface;
 use Glpi\Form\AccessControl\FormAccessControl;
 use Glpi\Form\Destination\FormDestination;
 use Glpi\Form\QuestionType\QuestionTypeInterface;
-use Html;
+use Glpi\Form\ServiceCatalog\ServiceCatalog;
 use Glpi\DBAL\QuerySubQuery;
 use Glpi\Form\AccessControl\FormAccessControlManager;
 use Glpi\Form\QuestionType\QuestionTypesManager;
+use Html;
 use Log;
+use MassiveAction;
 use Override;
 use ReflectionClass;
 use Session;
@@ -85,9 +87,16 @@ final class Form extends CommonDBTM
     }
 
     #[Override]
+    public static function getSectorizedDetails(): array
+    {
+        return ['admin', self::class];
+    }
+
+    #[Override]
     public function defineTabs($options = [])
     {
         $tabs = parent::defineTabs();
+        $this->addStandardTab(ServiceCatalog::getType(), $tabs, $options);
         $this->addStandardTab(AnswersSet::getType(), $tabs, $options);
         $this->addStandardTab(FormAccessControl::getType(), $tabs, $options);
         $this->addStandardTab(FormDestination::getType(), $tabs, $options);
@@ -106,17 +115,6 @@ final class Form extends CommonDBTM
         $this->initForm($id, $options);
 
         $types_manager = QuestionTypesManager::getInstance();
-        $js_files = [
-            'js/form_editor_controller.js',
-            'js/form_editor_converted_extracted_default_value.js',
-        ];
-        foreach ($types_manager->getQuestionTypes() as $type) {
-            foreach ((new $type())->loadJavascriptFiles() as $file) {
-                if (!in_array($file, $js_files)) {
-                    $js_files[] = $file;
-                }
-            }
-        }
 
         // Render twig template
         $twig = TemplateRenderer::getInstance();
@@ -124,7 +122,6 @@ final class Form extends CommonDBTM
             'item'                   => $this,
             'params'                 => $options,
             'question_types_manager' => $types_manager,
-            'js_files'               => $js_files,
             'allow_unauthenticated_access'      => FormAccessControlManager::getInstance()->allowUnauthenticatedAccess($this),
         ]);
         return true;
@@ -248,6 +245,43 @@ final class Form extends CommonDBTM
                 FormAccessControl::class,
             ]
         );
+    }
+
+    #[Override]
+    public function getSpecificMassiveActions($checkitem = null): array
+    {
+        $actions = parent::getSpecificMassiveActions($checkitem);
+
+        $key = self::class . MassiveAction::CLASS_ACTION_SEPARATOR . "export";
+        $icon = '<i class="ti ti-file-arrow-right"></i>';
+        $label = __s('Export form');
+        $actions[$key] = $icon . $label;
+
+        return $actions;
+    }
+
+    #[Override]
+    public static function showMassiveActionsSubForm(MassiveAction $ma): bool
+    {
+        $ids = array_values($ma->getItems()[Form::class]);
+        $export_url = "/Form/Export?" . http_build_query(['ids' => $ids]);
+
+        $label = __s("Click here to download the exported forms...");
+        echo "<a href=\"$export_url\">$label</a>";
+        echo Html::scriptBlock("window.location.href = '$export_url';");
+
+        return true;
+    }
+
+    public static function getAdditionalMenuLinks(): array
+    {
+        $links = [];
+
+        if (self::canCreate()) {
+            $links['import_forms'] = '/Form/Import';
+        }
+
+        return $links;
     }
 
     /**

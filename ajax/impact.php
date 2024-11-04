@@ -33,20 +33,25 @@
  * ---------------------------------------------------------------------
  */
 
-use Glpi\Http\Response;
+use Glpi\Exception\Http\AccessDeniedHttpException;
+use Glpi\Exception\Http\BadRequestHttpException;
+use Glpi\Plugin\Hooks;
 
 const DELTA_ACTION_ADD    = 1;
 const DELTA_ACTION_UPDATE = 2;
 const DELTA_ACTION_DELETE = 3;
 
-/** @var $this \Glpi\Controller\LegacyFileLoadController */
+/** @var \Glpi\Controller\LegacyFileLoadController $this */
 $this->setAjax();
+
+/**
+ * @var array $CFG_GLPI
+ */
+global $CFG_GLPI;
 
 // Send UTF8 Headers
 header("Content-Type: application/json; charset=UTF-8");
 Html::header_nocache();
-
-Session::checkLoginUser();
 
 switch ($_SERVER['REQUEST_METHOD']) {
    // GET request: build the impact graph for a given asset
@@ -62,11 +67,23 @@ switch ($_SERVER['REQUEST_METHOD']) {
 
                 // Check required params
                 if (empty($itemtype)) {
-                    Response::sendError(400, "Missing itemtype");
+                    throw new BadRequestHttpException("Missing itemtype");
                 }
-
+                $icon = $CFG_GLPI["impact_asset_types"][$itemtype];
                 // Execute search
+
                 $assets = Impact::searchAsset($itemtype, json_decode($used), $filter, $page);
+                foreach ($assets['items'] as $index => $item) {
+                    $plugin_icon = Plugin::doHookFunction(Hooks::SET_ITEM_IMPACT_ICON, [
+                        'itemtype' => $itemtype,
+                        'items_id' => $item['id']
+                    ]);
+                    if ($plugin_icon && is_string($plugin_icon)) {
+                        $icon = ltrim($plugin_icon, '/');
+                    }
+                    $item['image'] = $CFG_GLPI['root_doc'] . '/' . $icon;
+                    $assets['items'][$index] = $item;
+                }
                 header('Content-Type: application/json');
                 echo json_encode($assets);
                 break;
@@ -78,12 +95,12 @@ switch ($_SERVER['REQUEST_METHOD']) {
 
                // Check required params
                 if (empty($itemtype) || empty($items_id)) {
-                    Response::sendError(400, "Missing itemtype or items_id");
+                    throw new BadRequestHttpException("Missing itemtype or items_id");
                 }
 
-               // Check that the the target asset exist
+               // Check that the target asset exist
                 if (!Impact::assetExist($itemtype, $items_id)) {
-                    Response::sendError(400, "Object[class=$itemtype, id=$items_id] doesn't exist");
+                    throw new BadRequestHttpException("Object[class=$itemtype, id=$items_id] doesn't exist");
                 }
 
                // Prepare graph
@@ -109,8 +126,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 break;
 
             default:
-                Response::sendError(400, "Missing or invalid 'action' parameter");
-                break;
+                throw new BadRequestHttpException("Missing or invalid 'action' parameter");
         }
         break;
 
@@ -118,13 +134,13 @@ switch ($_SERVER['REQUEST_METHOD']) {
     case 'POST':
        // Check required params
         if (!isset($_POST['impacts'])) {
-            Response::sendError(400, "Missing 'impacts' payload");
+            throw new BadRequestHttpException("Missing 'impacts' payload");
         }
 
        // Decode data (should be json)
         $data = Toolbox::jsonDecode($_POST['impacts'], true);
         if (!is_array($data)) {
-            Response::sendError(400, "Payload should be an array");
+            throw new BadRequestHttpException("Payload should be an array");
         }
 
         $readonly = true;
@@ -145,7 +161,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
 
        // Stop here if readonly graph
         if ($readonly) {
-            Response::sendError(403, "Missing rights");
+            throw new AccessDeniedHttpException("Missing rights");
         }
 
         $context_id = 0;
@@ -259,6 +275,5 @@ switch ($_SERVER['REQUEST_METHOD']) {
         }
 
         header('Content-Type: application/javascript');
-        http_response_code(200);
         break;
 }

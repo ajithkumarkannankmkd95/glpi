@@ -33,16 +33,10 @@
  * ---------------------------------------------------------------------
  */
 
-/** @var $this \Glpi\Controller\LegacyFileLoadController */
+/** @var \Glpi\Controller\LegacyFileLoadController $this */
 $this->setAjax();
 
 header("Content-Type: text/html; charset=UTF-8");
 Html::header_nocache();
 
-Session::checkLoginUser();
-
-try {
-    echo json_encode(Html::getMenuFuzzySearchList(), JSON_THROW_ON_ERROR);
-} catch (JsonException $e) {
-    die(500);
-}
+echo json_encode(Html::getMenuFuzzySearchList(), JSON_THROW_ON_ERROR);

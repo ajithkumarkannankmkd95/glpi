@@ -36,11 +36,11 @@
 namespace tests\units\Glpi\Form;
 
 use CommonGLPI;
-use Computer;
 use DbTestCase;
 use Glpi\Form\Answer;
 use Glpi\Form\AnswersHandler\AnswersHandler;
 use Glpi\Form\AnswersSet;
+use Glpi\Form\Destination\FormDestinationProblem;
 use Glpi\Form\Form;
 use Glpi\Form\Question;
 use Glpi\Form\QuestionType\QuestionTypeAssignee;
@@ -52,6 +52,8 @@ use Glpi\Form\QuestionType\QuestionTypeDateTime;
 use Glpi\Form\QuestionType\QuestionTypeDropdown;
 use Glpi\Form\QuestionType\QuestionTypeEmail;
 use Glpi\Form\QuestionType\QuestionTypeFile;
+use Glpi\Form\QuestionType\QuestionTypeItem;
+use Glpi\Form\QuestionType\QuestionTypeItemDropdown;
 use Glpi\Form\QuestionType\QuestionTypeLongText;
 use Glpi\Form\QuestionType\QuestionTypeNumber;
 use Glpi\Form\QuestionType\QuestionTypeRequestType;
@@ -59,6 +61,7 @@ use Glpi\Form\QuestionType\QuestionTypeRadio;
 use Glpi\Form\QuestionType\QuestionTypeShortText;
 use Glpi\Form\QuestionType\QuestionTypesManager;
 use Glpi\Form\QuestionType\QuestionTypeUrgency;
+use Glpi\Form\QuestionType\QuestionTypeUserDevice;
 use Glpi\Tests\FormBuilder;
 use Glpi\Tests\FormTesterTrait;
 use Group;
@@ -209,6 +212,9 @@ class AnswersSetTest extends DbTestCase
                         123 => 'Dropdown 1'
                     ]
                 ]))
+                ->addQuestion("GLPI Objects", QuestionTypeItem::class, 0, json_encode(['itemtype' => 'User']))
+                ->addQuestion("User Devices", QuestionTypeUserDevice::class)
+                ->addQuestion("Dropdowns", QuestionTypeItemDropdown::class, 0, json_encode(['itemtype' => 'Location']))
         );
 
         // File question type requires an uploaded file
@@ -245,6 +251,15 @@ class AnswersSetTest extends DbTestCase
             $this->getQuestionId($form, "Radio") => 'Radio 1',
             $this->getQuestionId($form, "Checkbox") => 'Checkbox 1',
             $this->getQuestionId($form, "Dropdown") => 'Dropdown 1',
+            $this->getQuestionId($form, "GLPI Objects") => [
+                'itemtype' => 'User',
+                'items_id' => 0
+            ],
+            $this->getQuestionId($form, "User Devices") => 'Computer_0',
+            $this->getQuestionId($form, "Dropdowns") => [
+                'itemtype' => 'Location',
+                'items_id' => 0
+            ],
         ], \Session::getLoginUserID());
 
         // Ensure we used every possible questions types
@@ -304,6 +319,29 @@ class AnswersSetTest extends DbTestCase
         // handled in the "FormDestinationTicket" tests class.
     }
 
+    public function testGetLinksToCreatedItemssForAdmin()
+    {
+        $this->login();
+        $form = $this->createAndGetFormWithTwoProblemDestination();
+
+        $answers_handler = AnswersHandler::getInstance();
+        $answers = $answers_handler->saveAnswers($form, [], \Session::getLoginUserID());
+
+        $this->assertCount(2, $answers->getLinksToCreatedItems());
+    }
+
+    public function testGetLinksToCreatedItemssForEndUser()
+    {
+        $this->login("post-only", "postonly");
+        $form = $this->createAndGetFormWithTwoProblemDestination();
+
+        $answers_handler = AnswersHandler::getInstance();
+        $answers = $answers_handler->saveAnswers($form, [], \Session::getLoginUserID());
+
+        // User can't see problems, still there is one fallback link to the answers
+        $this->assertCount(1, $answers->getLinksToCreatedItems());
+    }
+
     private function createAndGetFormWithTwoAnswers(): Form
     {
         $form = $this->createForm(
@@ -318,6 +356,18 @@ class AnswersSetTest extends DbTestCase
         $answers_handler->saveAnswers($form, [
             $this->getQuestionId($form, "Name") => "Paul Pierre Jacques"
         ], \Session::getLoginUserID());
+
+        return $form;
+    }
+
+    private function createAndGetFormWithTwoProblemDestination(): Form
+    {
+        $form = $this->createForm(
+            (new FormBuilder())
+                ->addQuestion("Name", QuestionTypeShortText::class)
+                ->addDestination(FormDestinationProblem::class, "My first problem")
+                ->addDestination(FormDestinationProblem::class, "My second problem")
+        );
 
         return $form;
     }

@@ -83,6 +83,7 @@
                             add_field_html: add_opt_btn,
                             templateResult: result_template_js,
                             mb: '',
+                            aria_label: __('Select an option to add'),
                         }) }}
 
                         {% if not is_global %}
@@ -100,7 +101,7 @@
                 {% endfor %}
                 {% for opt in entries|filter(v => v['fixed'] != true) %}
                     {% set name_prefix = opt['group'] is not empty ? (opt['group']) : '' %}
-                    <li data-opt-id="{{ opt['id'] }}" class="cursor-grab list-group-item py-2 d-flex px-2">
+                    <li data-opt-id="{{ opt['id'] }}" class="cursor-grab list-group-item py-2 d-flex px-2 align-items-center">
                         <i class="ti ti-grip-vertical fa-fw"></i>
                         <span class="flex-fill ms-1">{{ name_prefix ~ opt['name'] }}</span>
                         <span>
@@ -148,6 +149,7 @@
                     'action': 'update_order',
                     'itemtype': config_forms.find(`input[name="itemtype"]`).val(),
                     'users_id': config_forms.find(`input[name="users_id"]`).val(),
+                    'interface': '{{ interface }}',
                     'opts': opts,
                 },
             }).then(() => {
@@ -207,7 +209,7 @@
 
             const tbody = specific_form.find(`ul.list-group`);
             tbody.append(`
-               <li data-opt-id="${num}" class="cursor-grab list-group-item py-2 d-flex px-2">
+               <li data-opt-id="${num}" class="cursor-grab list-group-item py-2 d-flex px-2 align-items-center">
                   <i class="ti ti-grip-vertical fa-fw"></i>
                   <span class="flex-fill ms-1">${label}</span>
                   <span>

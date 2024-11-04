@@ -45,12 +45,17 @@ class QueuedWebhook extends CommonDBChild
 {
     public static $rightname = 'config';
 
-    public static $itemtype = Webhook::class;
+    public static $itemtype = \Webhook::class;
     public static $items_id = 'webhooks_id';
 
     public static function getTypeName($nb = 0)
     {
         return __('Webhook queue');
+    }
+
+    public static function getSectorizedDetails(): array
+    {
+        return ['config', Webhook::class];
     }
 
     public static function canCreate(): bool
@@ -608,10 +613,12 @@ JS);
                     ]
                 ],
                 [
-                    $webhook_table => [
-                        'ON' => [
-                            $queued_table => 'webhooks_id',
-                            $webhook_table => 'id'
+                    'LEFT JOIN' => [
+                        $webhook_table => [
+                            'ON' => [
+                                $queued_table => 'webhooks_id',
+                                $webhook_table => 'id'
+                            ]
                         ]
                     ]
                 ]

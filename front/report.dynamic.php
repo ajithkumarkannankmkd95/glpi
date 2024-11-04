@@ -33,6 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Exception\Http\AccessDeniedHttpException;
+
 if (!isset($_GET['item_type']) || !is_string($_GET['item_type']) || !is_a($_GET['item_type'], CommonGLPI::class, true)) {
     return;
 }
@@ -41,10 +43,9 @@ $itemtype = $_GET['item_type'];
 if ($itemtype === 'AllAssets') {
     Session::checkCentralAccess();
 } else {
-    Session::checkValidSessionId();
     $item = new $itemtype();
     if (!$item::canView()) {
-        Html::displayRightError();
+        throw new AccessDeniedHttpException();
     }
 }
 
@@ -110,7 +111,7 @@ if (isset($_GET["display_type"])) {
            // Plugin case
             if ($plug = isPluginItemType($itemtype)) {
                 if (Plugin::doOneHook($plug['plugin'], 'dynamicReport', $_GET)) {
-                    exit();
+                    return;
                 }
             }
             $params = Search::manageParams($itemtype, $_GET);

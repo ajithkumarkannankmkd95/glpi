@@ -69,6 +69,11 @@ class Certificate extends CommonDBTM
         return _n('Certificate', 'Certificates', $nb);
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['management', self::class];
+    }
+
     /**
      * Clean certificate items
      */
@@ -574,6 +579,7 @@ class Certificate extends CommonDBTM
 
         switch ($ma->getAction()) {
             case __CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'install':
+            case __CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'uninstall':
                 Dropdown::showSelectItemFromItemtypes(['items_id_name' => 'item_item',
                     'itemtype_name' => 'typeitem',
                     'itemtypes'     => self::getTypes(true),
@@ -581,16 +587,6 @@ class Certificate extends CommonDBTM
                 ]);
                 echo Html::submit(_x('button', 'Post'), ['name' => 'massiveaction']);
                 return true;
-            break;
-            case __CLASS__ . MassiveAction::CLASS_ACTION_SEPARATOR . 'uninstall':
-                Dropdown::showSelectItemFromItemtypes(['items_id_name' => 'item_item',
-                    'itemtype_name' => 'typeitem',
-                    'itemtypes'     => self::getTypes(true),
-                    'checkright'    => true
-                ]);
-                echo Html::submit(_x('button', 'Post'), ['name' => 'massiveaction']);
-                return true;
-            break;
         }
         return parent::showMassiveActionsSubForm($ma);
     }
@@ -808,7 +804,7 @@ class Certificate extends CommonDBTM
                         $task->log($msg);
                         $task->addVolume(1);
                     } else {
-                        Session::addMessageAfterRedirect(htmlspecialchars($msg));
+                        Session::addMessageAfterRedirect(htmlescape($msg));
                     }
 
                     // Add alert
@@ -832,7 +828,7 @@ class Certificate extends CommonDBTM
                     if ($task) {
                         $task->log($msg);
                     } else {
-                        Session::addMessageAfterRedirect(htmlspecialchars($msg), false, ERROR);
+                        Session::addMessageAfterRedirect(htmlescape($msg), false, ERROR);
                     }
                 }
             }

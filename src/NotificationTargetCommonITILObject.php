@@ -1144,9 +1144,9 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
     /**
      * Get data from an item
      *
-     * @param CommonDBTM $item    Object instance
-     * @param array      $options Options
-     * @param boolean    $simple  (false by default)
+     * @param CommonITILObject  $item    Object instance
+     * @param array             $options Options
+     * @param boolean           $simple  (false by default)
      *
      * @return array
      **/
@@ -1694,17 +1694,16 @@ abstract class NotificationTargetCommonITILObject extends NotificationTarget
                 }
                  $tmp['##task.author##']       = getUserName($task['users_id']);
 
-                 $tmp_taskcatinfo = Dropdown::getDropdownName(
+                 $tmp['##task.categoryid##']      = $task['taskcategories_id'];
+                 $tmp['##task.category##']        = Dropdown::getDropdownName(
                      'glpi_taskcategories',
                      $task['taskcategories_id'],
-                     true,
-                     true,
-                     false,
-                     ''
                  );
-                 $tmp['##task.categoryid##']      = $task['taskcategories_id'];
-                 $tmp['##task.category##']        = $tmp_taskcatinfo['name'];
-                 $tmp['##task.categorycomment##'] = $tmp_taskcatinfo['comment'];
+                 $tmp['##task.categorycomment##'] = Dropdown::getDropdownComments(
+                     'glpi_taskcategories',
+                     $task['taskcategories_id'],
+                     tooltip: false
+                 );
 
                  $tmp['##task.date##']         = Html::convDateTime($task['date']);
                  $tmp['##task.description##']  = $task['content'];

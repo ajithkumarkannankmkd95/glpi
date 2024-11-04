@@ -33,13 +33,11 @@
  * ---------------------------------------------------------------------
  */
 
-/** @var $this \Glpi\Controller\LegacyFileLoadController */
+/** @var \Glpi\Controller\LegacyFileLoadController $this */
 $this->setAjax();
 
 header("Content-Type: text/html; charset=UTF-8");
 Html::header_nocache();
-
-Session::checkLoginUser();
 
 if (isset($_POST['action'])) {
     $item_rack = new Item_Rack();

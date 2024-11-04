@@ -42,18 +42,17 @@ if (strpos($_SERVER['PHP_SELF'], "ruleaction.php")) {
     Html::header_nocache();
 }
 
-Session::checkLoginUser();
-
 // Non define case
 if (isset($_POST["sub_type"]) && class_exists($_POST["sub_type"])) {
     if (!isset($_POST["field"])) {
         $_POST["field"] = key(Rule::getActionsByType($_POST["sub_type"]));
     }
     if (!($item = getItemForItemtype($_POST["sub_type"]))) {
-        exit();
+        return;
     }
+    /** @var Rule $item */
     if (!isset($_POST[$item->getRuleIdField()])) {
-        exit();
+        return;
     }
 
    // Existing action

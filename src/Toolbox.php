@@ -37,6 +37,7 @@ use Glpi\Application\View\TemplateRenderer;
 use Glpi\Console\Application;
 use Glpi\DBAL\QueryParam;
 use Glpi\Event;
+use Glpi\Helpdesk\DefaultDataManager;
 use Glpi\Http\Response;
 use Glpi\Mail\Protocol\ProtocolInterface;
 use Glpi\Rules\RulesManager;
@@ -1501,7 +1502,7 @@ class Toolbox
                     if ($matches[1] !== $CFG_GLPI['url_base']) {
                         Session::addMessageAfterRedirect(__s('Redirection failed'));
                         if (Session::getCurrentInterface() === "helpdesk") {
-                            Html::redirect($CFG_GLPI["root_doc"] . "/front/helpdesk.public.php");
+                            Html::redirect($CFG_GLPI["root_doc"] . "/Helpdesk");
                         } else {
                             Html::redirect($CFG_GLPI["root_doc"] . "/front/central.php");
                         }
@@ -1565,28 +1566,27 @@ class Toolbox
                                     }
                                 }
 
-                                Html::redirect($CFG_GLPI["root_doc"] . "/front/helpdesk.public.php");
-                                break;
+                                Html::redirect($CFG_GLPI["root_doc"] . "/Helpdesk");
+                                // phpcs doesn't understand that the script will exit here so we need a comment to avoid the fallthrough warning
 
                             case "preference":
                                 Html::redirect($CFG_GLPI["root_doc"] . "/front/preference.php?$forcetab");
-                                break;
+                                // phpcs doesn't understand that the script will exit here so we need a comment to avoid the fallthrough warning
 
                             case "reservation":
                                 Html::redirect(Reservation::getFormURLWithID($data[1]) . "&$forcetab");
-                                break;
+                                // phpcs doesn't understand that the script will exit here so we need a comment to avoid the fallthrough warning
 
                             default:
-                                Html::redirect($CFG_GLPI["root_doc"] . "/front/helpdesk.public.php");
-                                break;
+                                Html::redirect($CFG_GLPI["root_doc"] . "/Helpdesk");
                         }
+                        // @phpstan-ignore deadCode.unreachable (defensive programming)
                         break;
 
                     case "central":
                         switch (strtolower($data[0])) {
                             case "preference":
                                 Html::redirect($CFG_GLPI["root_doc"] . "/front/preference.php?$forcetab");
-                                break;
 
                            // Use for compatibility with old name
                            // no break
@@ -1627,8 +1627,8 @@ class Toolbox
                                 }
 
                                 Html::redirect($CFG_GLPI["root_doc"] . "/front/central.php");
-                                break;
                         }
+                        // @phpstan-ignore deadCode.unreachable (defensive programming)
                         break;
                 }
             }
@@ -1839,7 +1839,7 @@ class Toolbox
     }
 
     /**
-     * Retuns available mail servers protocols.
+     * Returns available mail servers protocols.
      *
      * For each returned element:
      *  - key is type used in connection string;
@@ -2034,7 +2034,7 @@ class Toolbox
     /**
      * Clean integer string value (strip all chars not - and spaces )
      *
-     * @since versin 0.83.5
+     * @since version 0.83.5
      *
      * @param string  $integer  integer string
      *
@@ -2091,7 +2091,7 @@ class Toolbox
      * @since 9.1
      * @since 9.4.7 Added $database parameter
      **/
-    public static function createSchema($lang = 'en_GB', DBmysql $database = null)
+    public static function createSchema($lang = 'en_GB', ?DBmysql $database = null)
     {
         /** @var \DBmysql $DB */
         global $DB;
@@ -2155,6 +2155,10 @@ class Toolbox
                     }
                 }
             }
+
+            // Create default forms
+            $default_forms_manager = new DefaultDataManager();
+            $default_forms_manager->initializeData();
 
             // Initalize rules
             RulesManager::initializeRules();
@@ -2864,7 +2868,7 @@ class Toolbox
             return null;
         }
 
-        return ($full ? $CFG_GLPI["root_doc"] : "") . '/front/document.send.php?file=_pictures/' . htmlspecialchars($path);
+        return ($full ? $CFG_GLPI["root_doc"] : "") . '/front/document.send.php?file=_pictures/' . htmlescape($path);
     }
 
     /**
@@ -2991,6 +2995,16 @@ HTML;
     {
         $fg_color = "FFFFFF";
         if ($color !== "") {
+            if (preg_match('/rgba?\((\d+),\s*(\d+),\s*(\d+),?\s*([\d\.]+)?\)/', $color, $matches)) {
+                $rgb_color = [
+                    "R" => intval($matches[1]),
+                    "G" => intval($matches[2]),
+                    "B" => intval($matches[3])
+                ];
+                $alpha = isset($matches[4]) ? str_pad(dechex((int)round(floatval($matches[4]) * 255)), 2, '0', STR_PAD_LEFT) : '';
+                $color = Color::rgbToHex($rgb_color) . $alpha;
+            }
+
             $color = str_replace("#", "", $color);
 
            // if transparency present, get only the color part
@@ -3192,23 +3206,6 @@ HTML;
         $tabs[-1] = 'All';
 
         return $tabs;
-    }
-
-    /**
-     * Handle redirect after a profile switch.
-     * Must be called after a right check failure.
-     */
-    public static function handleProfileChangeRedirect(): void
-    {
-        /** @var array $CFG_GLPI */
-        global $CFG_GLPI;
-
-        $redirect = $_SESSION['_redirected_from_profile_selector'] ?? false;
-
-        if ($redirect) {
-            unset($_SESSION['_redirected_from_profile_selector']);
-            Html::redirect($CFG_GLPI['root_doc'] . "/front/central.php");
-        }
     }
 
     /**

@@ -42,13 +42,14 @@ use Preference;
 use Dropdown;
 use CronTask;
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\Http\HeaderlessStreamedResponse;
 use Glpi\Plugin\Hooks;
+use Glpi\Security\Attribute\SecurityStrategy;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Attribute\Route;
 
-final readonly class IndexController implements Controller
+final class IndexController extends AbstractController
 {
     #[Route(
         [
@@ -57,21 +58,23 @@ final readonly class IndexController implements Controller
         ],
         name: "glpi_index"
     )]
+    #[SecurityStrategy('no_check')]
     public function __invoke(Request $request): Response
     {
-        return new StreamedResponse($this->call(...));
+        return new HeaderlessStreamedResponse($this->call(...));
     }
 
     private function call(): void
     {
         /**
+         * @var \DBmysql|null $DB
          * @var array $CFG_GLPI
          * @var array $PLUGIN_HOOKS
          */
-        global $CFG_GLPI, $PLUGIN_HOOKS;
+        global $DB, $CFG_GLPI, $PLUGIN_HOOKS;
 
         // If config_db doesn't exist -> start installation
-        if (!file_exists(GLPI_CONFIG_DIR . "/config_db.php")) {
+        if (!file_exists(GLPI_CONFIG_DIR . "/config_db.php") || !class_exists('DB', false)) {
             if (file_exists(GLPI_ROOT . '/install/install.php')) {
                 Html::redirect("install/install.php");
             } else {
@@ -79,7 +82,7 @@ final readonly class IndexController implements Controller
                 Session::setPath();
                 Session::start();
                 Session::loadLanguage('', false);
-                // Prevent inclusion of debug informations in footer, as they are based on vars that are not initialized here.
+                // Prevent inclusion of debug information in footer, as they are based on vars that are not initialized here.
                 $_SESSION['glpi_use_mode'] = Session::NORMAL_MODE;
 
                 // no translation
@@ -101,15 +104,15 @@ final readonly class IndexController implements Controller
                 echo '</div>';
                 echo '</div>';
                 Html::nullFooter();
+                return;
             }
-            die();
         }
 
         //Try to detect GLPI agent calls
         $rawdata = file_get_contents("php://input");
         if (!isset($_POST['totp_code']) && !empty($rawdata) && $_SERVER['REQUEST_METHOD'] === 'POST') {
             include_once(GLPI_ROOT . '/front/inventory.php');
-            die();
+            return;
         }
 
         Session::checkCookieSecureConfig();
@@ -146,17 +149,16 @@ final readonly class IndexController implements Controller
             }
         }
 
-        // redirect to ticket
-        if ($redirect !== '') {
-            Toolbox::manageRedirect($redirect);
-        }
-
-        if (count($errors)) {
+        if (count($errors) > 0) {
             TemplateRenderer::getInstance()->display('pages/login_error.html.twig', [
                 'errors'    => $errors,
-                'login_url' => $CFG_GLPI["root_doc"] . '/front/logout.php?noAUTO=1&redirect=' . str_replace("?", "&", $redirect),
+                'login_url' => $CFG_GLPI["root_doc"] . '/front/logout.php?noAUTO=1&redirect=' . \rawurlencode($redirect),
             ]);
         } else {
+            if ($redirect !== '') {
+                Toolbox::manageRedirect($redirect);
+            }
+
             if (isset($_SESSION['mfa_pre_auth'], $_POST['skip_mfa'])) {
                 Html::redirect($CFG_GLPI['root_doc'] . '/front/login.php?skip_mfa=1');
             }
@@ -218,10 +220,9 @@ final readonly class IndexController implements Controller
                 ]);
             }
         }
+
         // call cron
-        if (!GLPI_DEMO_MODE) {
-            CronTask::callCronForce();
-        }
+        CronTask::callCronForce();
 
         echo "</body></html>";
     }

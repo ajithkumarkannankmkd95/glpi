@@ -178,7 +178,7 @@ class CacheManager
      * @param string|string[] $dsn
      * @param array           $options
      *
-     * @return array
+     * @return void
      */
     public function testConnection($dsn, array $options = []): void
     {
@@ -272,7 +272,6 @@ class CacheManager
 
                 default:
                     throw new \RuntimeException(sprintf('Invalid cache DSN %s.', var_export($dsn, true)));
-                    break;
             }
         }
 

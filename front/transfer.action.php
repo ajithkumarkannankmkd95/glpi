@@ -33,7 +33,9 @@
  * ---------------------------------------------------------------------
  */
 
-Html::header(__('Transfer'), '', 'admin', 'rule', 'transfer');
+use Glpi\Exception\Http\AccessDeniedHttpException;
+
+Html::header(__('Transfer'), '', 'admin', 'rule', 'Transfer');
 
 $transfer = new Transfer();
 
@@ -42,14 +44,14 @@ $transfer->checkGlobal(READ);
 if (isset($_POST['transfer'])) {
     if (isset($_SESSION['glpitransfer_list'])) {
         if (!Session::haveAccessToEntity($_POST['to_entity'])) {
-            Html::displayRightError();
+            throw new AccessDeniedHttpException();
         }
         $transfer->moveItems($_SESSION['glpitransfer_list'], $_POST['to_entity'], $_POST);
         unset($_SESSION['glpitransfer_list']);
         echo "<div class='fw-bold text-center'>" . __s('Operation successful') . "<br>";
         echo "<a href='central.php' role='button' class='btn btn-primary'>" . __s('Back') . "</a></div>";
         Html::footer();
-        exit();
+        return;
     }
 } else if (isset($_POST['clear'])) {
     unset($_SESSION['glpitransfer_list']);
@@ -57,7 +59,7 @@ if (isset($_POST['transfer'])) {
     echo "<a href='central.php' role='button' class='btn btn-primary'>" . __s('Back') . "</a></div>";
     echo "</div>";
     Html::footer();
-    exit();
+    return;
 }
 
 unset($_SESSION['glpimassiveactionselected']);

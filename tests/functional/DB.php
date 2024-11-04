@@ -396,7 +396,7 @@ class DB extends \GLPITestCase
         // Tables that don't have an itemtype on purpose
         $excluded_tables = [
             'glpi_assets_assets', 'glpi_assets_assetmodels', 'glpi_assets_assettypes',
-            'glpi_appliancerelations', 'glpi_oauth_access_tokens', 'glpi_oauth_auth_codes',
+            'glpi_appliancerelations', 'glpi_dropdowns_dropdowns', 'glpi_oauth_access_tokens', 'glpi_oauth_auth_codes',
             'glpi_oauth_refresh_tokens', 'glpi_stencils',
         ];
 
@@ -513,22 +513,7 @@ SQL,
                         UNIQUE KEY (`nameid`)
                     ){$table_options}
 SQL,
-                'db_properties' => [
-                    'allow_myisam' => true
-                ],
-                'warning' => null
-            ];
-
-            yield [
-                'sql' => <<<SQL
-                    CREATE TABLE `%s` (
-                        `nameid` varchar(100) NOT NULL,
-                        UNIQUE KEY (`nameid`)
-                    ){$table_options}
-SQL,
-                'db_properties' => [
-                    'allow_myisam' => false
-                ],
+                'db_properties' => [],
                 'warning' => 'Usage of "MyISAM" engine is discouraged, please use "InnoDB" engine.'
             ];
         }

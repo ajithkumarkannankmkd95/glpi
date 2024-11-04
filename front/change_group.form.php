@@ -33,19 +33,18 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Event;
+use Glpi\Exception\Http\BadRequestHttpException;
+
 /**
  * @since 0.85
  */
-
-use Glpi\Event;
 
 /** @var array $CFG_GLPI */
 global $CFG_GLPI;
 
 $link = new Change_Group();
 $item = new Change();
-
-Session::checkLoginUser();
 
 if (isset($_POST['delete'])) {
     $link->check($_POST['id'], DELETE);
@@ -71,4 +70,4 @@ if (isset($_POST['delete'])) {
     Html::redirect($CFG_GLPI["root_doc"] . "/front/change.php");
 }
 
-Html::displayErrorAndDie('Lost');
+throw new BadRequestHttpException();

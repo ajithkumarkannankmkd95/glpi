@@ -86,6 +86,10 @@ class Phone extends CommonDBTM
         return _n('Phone', 'Phones', $nb);
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['assets', self::class];
+    }
 
     /**
      * @see CommonDBTM::useDeletedToLockIfDynamic()
@@ -510,6 +514,8 @@ class Phone extends CommonDBTM
         $tab = array_merge($tab, ItemAntivirus::rawSearchOptionsToAdd());
 
         $tab = array_merge($tab, Item_RemoteManagement::rawSearchOptionsToAdd(self::class));
+
+        $tab = array_merge($tab, Agent::rawSearchOptionsToAdd());
 
         return $tab;
     }

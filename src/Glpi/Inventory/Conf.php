@@ -58,6 +58,7 @@ use NetworkPortType;
 use Session;
 use State;
 use Toolbox;
+use GLPIKey;
 use wapmorgan\UnifiedArchive\UnifiedArchive;
 
 /**
@@ -108,6 +109,10 @@ class Conf extends CommonGLPI
     public const STALE_AGENT_ACTION_STATUS = 1;
 
     public const STALE_AGENT_ACTION_TRASHBIN = 2;
+
+    public const CLIENT_CREDENTIALS = 'client_credentials';
+
+    public const BASIC_AUTH = 'basic_auth';
 
     public static $rightname = 'inventory';
 
@@ -303,7 +308,7 @@ class Conf extends CommonGLPI
                 }
                 if ($item->enabled_inventory && Session::haveRight(self::$rightname, self::IMPORTFROMFILE)) {
                     $icon = "<i class='ti ti-upload me-2'></i>";
-                    $text = '<span>' . $icon . __('Import from file') . '</span>';
+                    $text = '<span>' . $icon . __s('Import from file') . '</span>';
                     $tabs[2] = $text;
                 }
                 return $tabs;
@@ -359,7 +364,7 @@ class Conf extends CommonGLPI
 
         echo "<th>";
         echo "<label for='enabled_inventory'>";
-        echo __('Enable inventory');
+        echo __s('Enable inventory');
         echo "</label>";
         echo "</th>";
         echo "<td colspan='3'>";
@@ -376,7 +381,7 @@ class Conf extends CommonGLPI
             echo "<div class='alert alert-info d-flex align-items-center m-0' role='alert'>";
             echo "<span class='ms-2'>";
             echo "<i class='fas fa-info-circle'> </i> &nbsp;";
-            echo __("The inventory is disabled, remember to activate it if necessary");
+            echo __s("The inventory is disabled, remember to activate it if necessary");
             echo "</span>";
             echo "</div>";
         } else {
@@ -384,26 +389,70 @@ class Conf extends CommonGLPI
             echo '</div>';
             echo "</td>";
             echo "</tr>";
-
             echo "<tr class='tab_bg_1'>";
             echo "<td>";
+            echo "<i class='ti ti-cloud-lock me-2'></i>";
             echo "<label for='auth'>" . __s('Authorization header') . "</label>";
             echo "</td>";
             echo "<td>";
             Dropdown::showFromArray('auth_required', [
                 'none' => __('None'),
-                'client_credentials' => __('OAuth - Client credentials')
+                self::CLIENT_CREDENTIALS => __s('OAuth - Client credentials'),
+                self::BASIC_AUTH => __s('Basic Authentication'),
             ], [
                 'value' => $config['auth_required'] ?? 'none'
             ]);
             echo "</td></tr>";
+            echo "<tr class='tab_bg_1' id='basic_auth_login_row'>";
+            echo "<td>";
+            echo "<i class='ti ti-abc me-2'></i>";
+            echo "<label for='basic_auth_login'>" . __s('Login') . "</label>";
+            echo "<span class='required'>*</span>";
+            echo "</label>";
+            echo "</td>";
+            echo "<td>";
+            echo Html::input("basic_auth_login", [
+                "value" => $config["basic_auth_login"],
+            ]);
+            echo "</td>";
+            echo "</tr>";
+            echo "<tr class='tab_bg_1' id='basic_auth_password_row'>";
+            echo "<td>";
+            echo "<i class='ti ti-password me-2'></i>";
+            echo "<label for='basic_auth_password'>" . __s('Password') . "</label>";
+            echo "<span class='required'>*</span>";
+            echo "</label>";
+            echo "</td>";
+            echo "<td>";
+            echo Html::input("basic_auth_password", [
+                "value" => (new GLPIKey())->decrypt($config['basic_auth_password']),
+                "type" => "password",
+            ]);
+            echo "</td>";
+            echo "</tr>";
+            echo Html::scriptBlock("
+                function toggleDisplayLoginInputs(select) {
+                    let displayedInputs = false;
+                    const selectedValue = $(select).val();
+                    if (selectedValue == '" . self::BASIC_AUTH . "') {
+                        displayedInputs = true;
+                    }
+                    $('#basic_auth_login_row').toggle(displayedInputs);
+                    $('#basic_auth_password_row').toggle(displayedInputs);
+                }
 
+                const selectAuthHeader = $(`select[name='auth_required']`);
+                selectAuthHeader.change(function() {
+                    toggleDisplayLoginInputs(this);
+                });
+
+                toggleDisplayLoginInputs(selectAuthHeader);
+            ");
             echo "<tr>";
             echo "<th colspan='4'>";
-            echo __('Import options');
+            echo __s('Import options');
             echo "</th>";
             echo "</tr>";
-
             echo "<tr class='tab_bg_1'>";
             echo "<td>";
             echo "<label for='import_volume'>";
@@ -415,6 +464,34 @@ class Conf extends CommonGLPI
                 'name'      => 'import_volume',
                 'id'        => 'import_volume',
                 'checked'   => $config['import_volume']
+            ]);
+            echo "</td>";
+
+            echo "<td>";
+            echo "<label for='component_networkdrive'>";
+            echo \DeviceDrive::createTabEntry(__('Network drives'), 0, \DeviceDrive::getType());
+            echo "</label>";
+            echo "</td>";
+            echo "<td>";
+            Html::showCheckbox([
+                'name'      => 'component_networkdrive',
+                'id'        => 'component_networkdrive',
+                'checked'   => $config['component_networkdrive']
+            ]);
+            echo "</td>";
+            echo "</tr>";
+
+            echo "<tr class='tab_bg_1'>";
+            echo "<td>";
+            echo "<label for='component_drive'>";
+            echo \DeviceDrive::createTabEntry(__('Removable drives'), 0, \DeviceDrive::getType());
+            echo "</label>";
+            echo "</td>";
+            echo "<td>";
+            Html::showCheckbox([
+                'name'      => 'component_removablemedia',
+                'id'        => 'component_removablemedia',
+                'checked'   => $config['component_removablemedia']
             ]);
             echo "</td>";
 
@@ -575,7 +652,7 @@ class Conf extends CommonGLPI
             echo "<tr class='tab_bg_1'>";
 
             echo "<td>";
-            echo "<label for='dropdown_entities_id_id_default$rand'>";
+            echo "<label for='dropdown_entities_id_default$rand'>";
             echo \Entity::createTabEntry(__('Default entity'), 0, \Entity::getType());
             echo "</label>";
             echo "</td>";
@@ -609,7 +686,7 @@ class Conf extends CommonGLPI
 
             echo "<tr class='tab_bg_1'>";
             echo "<th colspan='4'>";
-            echo __('Related configurations');
+            echo __s('Related configurations');
             echo "</th>";
             echo "</tr>";
             echo "<tr class='tab_bg_1'>";
@@ -619,11 +696,11 @@ class Conf extends CommonGLPI
                 $collection = new $col_class();
                 $rules = $collection->getRuleClass();
                 echo "<td colspan='2'>";
-                echo \Rule::createTabEntry(sprintf(
-                    "<a href='%s'>%s</a>",
+                echo sprintf(
+                    '<a href="%s">%s</a>',
                     $rules::getSearchURL(),
-                    $collection->getTitle()
-                ), 0, \Rule::getType());
+                    \Rule::createTabEntry($collection->getTitle(), 0, \Rule::getType())
+                );
                 echo "</td>";
             }
             echo "</tr>";
@@ -631,11 +708,11 @@ class Conf extends CommonGLPI
             echo "<tr class='tab_bg_1'>";
             echo "<td>";
 
-            echo \NetworkPort::createTabEntry(sprintf(
-                "<a href='%s'>%s</a>",
+            echo sprintf(
+                '<a href="%s">%s</a>',
                 NetworkPortType::getSearchURL(),
-                NetworkPortType::getTypeName()
-            ), 0, \NetworkPort::getType());
+                \NetworkPort::createTabEntry(NetworkPortType::getTypeName(), 0, \NetworkPort::getType())
+            );
             echo "</td>";
             echo "</tr>";
 
@@ -705,13 +782,13 @@ class Conf extends CommonGLPI
 
             echo "<tr class='tab_bg_1'>";
             echo "<td colspan='4' style='text-align:right;'>";
-            echo "<span class='red'>" . __('Will attempt to create components from VM information sent from host, do not use if you plan to inventory any VM directly!') . "</span>";
+            echo "<span class='red'>" . __s('Will attempt to create components from VM information sent from host, do not use if you plan to inventory any VM directly!') . "</span>";
             echo "</td>";
             echo "</tr>";
 
             echo "<tr class='tab_bg_1'>";
             echo "<th colspan='4'>";
-            echo CommonDevice::getTypeName(Session::getPluralNumber());
+            echo htmlescape(CommonDevice::getTypeName(Session::getPluralNumber()));
             echo "</th>";
             echo "</tr>";
 
@@ -844,34 +921,6 @@ class Conf extends CommonGLPI
             ]);
             echo "</td>";
 
-            echo "</td>";
-            echo "<td>";
-            echo "<label for='component_networkdrive'>";
-            echo \DeviceDrive::createTabEntry(__('Network drives'), 0, \DeviceDrive::getType());
-            echo "</label>";
-            echo "</td>";
-            echo "<td>";
-            Html::showCheckbox([
-                'name'      => 'component_networkdrive',
-                'id'        => 'component_networkdrive',
-                'checked'   => $config['component_networkdrive']
-            ]);
-            echo "</td>";
-            echo "</tr>";
-
-            echo "<tr class='tab_bg_1'>";
-            echo "<td>";
-            echo "<label for='component_drive'>";
-            echo \DeviceDrive::createTabEntry(__('Removable drives'), 0, \DeviceDrive::getType());
-            echo "</label>";
-            echo "</td>";
-            echo "<td>";
-            Html::showCheckbox([
-                'name'      => 'component_removablemedia',
-                'id'        => 'component_removablemedia',
-                'checked'   => $config['component_removablemedia']
-            ]);
-            echo "</td>";
             echo "<td>";
             echo "<label for='component_powersupply'>";
             echo \DevicePowerSupply::createTabEntry(DevicePowerSupply::getTypeName(Session::getPluralNumber()), 0, \DevicePowerSupply::getType());
@@ -917,22 +966,23 @@ class Conf extends CommonGLPI
             echo "</tr>";
 
             echo "<tr class='tab_bg_1'>";
-            echo "<th colspan=4 >" . __('Agent cleanup') . "</th></tr>";
-            echo "<tr class='tab_bg_1'><td>";
+            echo "<th colspan=4 >" . __s('Agent cleanup') . "</th></tr>";
+            echo "<tr class='tab_bg_1'><td><label for='dropdown_stale_agents_delay$rand'>";
             echo \Agent::createTabEntry(__('Update agents who have not contacted the server for (in days)'), 0, \Agent::getType());
-            echo "</td><td width='20%'>";
+            echo "</label></td><td width='20%'>";
             Dropdown::showNumber(
                 'stale_agents_delay',
                 [
                     'value' => $config['stale_agents_delay'] ?? 0,
                     'min'   => 1,
                     'max'   => 1000,
-                    'toadd' => ['0' => __('Disabled')]
+                    'toadd' => ['0' => __('Disabled')],
+                    'rand'  => $rand
                 ]
             );
-            echo "</td><td>";
+            echo "</td><td><label for='dropdown_stale_agents_action$rand'>";
             echo \Agent::createTabEntry(_n('Action', 'Actions', 1), 0, \Agent::getType());
-            echo "</><td width='20%'>";
+            echo "</label></td><td width='20%'>";
             //action
             $action = self::getDefaults()['stale_agents_action'];
             if (isset($config['stale_agents_action'])) {
@@ -944,7 +994,8 @@ class Conf extends CommonGLPI
                 [
                     'values' => importArrayFromDB($action),
                     'on_change' => 'changestatus();',
-                    'multiple' => true
+                    'multiple' => true,
+                    'rand' => $rand
                 ]
             );
             //if action == action_status => show blocation else hide blocaction
@@ -1087,7 +1138,7 @@ class Conf extends CommonGLPI
             );
             trigger_error($msg, E_USER_WARNING);
             Session::addMessageAfterRedirect(
-                htmlspecialchars($msg),
+                htmlescape($msg),
                 false,
                 WARNING
             );
@@ -1100,6 +1151,27 @@ class Conf extends CommonGLPI
         ) {
             // keep only the "All" value
             $values['stale_agents_status_condition'] = ['all'];
+        }
+
+        if (isset($values['auth_required']) && $values['auth_required'] === Conf::BASIC_AUTH) {
+            if (
+                    !empty($values['basic_auth_password']) &&
+                    !empty($values['basic_auth_login'])
+            ) {
+                $values['basic_auth_password'] = (new GLPIKey())->encrypt($values['basic_auth_password']);
+            } else {
+                Session::addMessageAfterRedirect(
+                    __s("Basic Authentication is active. The login and/or password fields are missing."),
+                    false,
+                    ERROR
+                );
+                return false;
+            }
+        }
+
+        if (isset($values['auth_required']) && $values['auth_required'] !== Conf::BASIC_AUTH) {
+            $values['basic_auth_login'] = null;
+            $values['basic_auth_password'] = null;
         }
 
         $to_process = [];
@@ -1141,7 +1213,7 @@ class Conf extends CommonGLPI
             );
             trigger_error($msg, E_USER_WARNING);
             Session::addMessageAfterRedirect(
-                htmlspecialchars($msg),
+                htmlescape($msg),
                 false,
                 WARNING
             );
@@ -1226,6 +1298,8 @@ class Conf extends CommonGLPI
             'stale_agents_status_condition'  => exportArrayToDB(['all']),
             'import_env'                     => 0,
             'auth_required'                  => 'none',
+            'basic_auth_login'                     => '',
+            'basic_auth_password'                  => ''
         ];
     }
 

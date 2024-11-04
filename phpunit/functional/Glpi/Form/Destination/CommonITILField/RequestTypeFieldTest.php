@@ -214,7 +214,7 @@ final class RequestTypeFieldTest extends DbTestCase
         $this->updateItem(
             $destination::getType(),
             $destination->getId(),
-            ['config' => ['request_type' => $config->jsonSerialize()]],
+            ['config' => [RequestTypeField::getKey() => $config->jsonSerialize()]],
             ["config"],
         );
 

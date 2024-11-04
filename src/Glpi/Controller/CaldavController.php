@@ -34,13 +34,13 @@
 
 namespace Glpi\Controller;
 
+use Glpi\Http\HeaderlessStreamedResponse;
 use Glpi\Security\Attribute\SecurityStrategy;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Attribute\Route;
 
-final readonly class CaldavController implements Controller
+final class CaldavController extends AbstractController
 {
     #[Route(
         "/caldav.php{request_parameters}",
@@ -52,7 +52,7 @@ final readonly class CaldavController implements Controller
     #[SecurityStrategy('no_check')]
     public function __invoke(Request $request): Response
     {
-        return new StreamedResponse(function () {
+        return new HeaderlessStreamedResponse(function () {
             /** @var array $CFG_GLPI */
             global $CFG_GLPI;
 

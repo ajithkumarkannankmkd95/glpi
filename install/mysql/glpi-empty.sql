@@ -2557,8 +2557,9 @@ CREATE TABLE `glpi_displaypreferences` (
   `num` int NOT NULL DEFAULT '0',
   `rank` int NOT NULL DEFAULT '0',
   `users_id` int unsigned NOT NULL DEFAULT '0',
+  `interface` varchar(255) NOT NULL DEFAULT 'central',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `unicity` (`users_id`,`itemtype`,`num`),
+  UNIQUE KEY `unicity` (`users_id`,`itemtype`,`num`,`interface`),
   KEY `rank` (`rank`),
   KEY `num` (`num`),
   KEY `itemtype` (`itemtype`)
@@ -5046,9 +5047,11 @@ CREATE TABLE `glpi_notificationtargets` (
   `items_id` int unsigned NOT NULL DEFAULT '0',
   `type` int NOT NULL DEFAULT '0',
   `notifications_id` int unsigned NOT NULL DEFAULT '0',
+  `is_exclusion` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `items` (`type`,`items_id`),
-  KEY `notifications_id` (`notifications_id`)
+  KEY `notifications_id` (`notifications_id`),
+  KEY `is_exclusion` (`is_exclusion`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
 
@@ -9456,6 +9459,8 @@ CREATE TABLE `glpi_forms_forms` (
     `is_draft` tinyint NOT NULL DEFAULT '0',
     `name` varchar(255) NOT NULL DEFAULT '',
     `header` longtext,
+    `illustration` varchar(255) NOT NULL DEFAULT '',
+    `description` longtext,
     `date_mod` timestamp NULL DEFAULT NULL,
     `date_creation` timestamp NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
@@ -9889,6 +9894,7 @@ CREATE TABLE `glpi_assets_assets` (
   `assets_assetmodels_id` int unsigned NOT NULL DEFAULT '0',
   `assets_assettypes_id` int unsigned NOT NULL DEFAULT '0',
   `name` varchar(255) DEFAULT NULL,
+  `uuid` varchar(255) DEFAULT NULL,
   `comment` text,
   `serial` varchar(255) DEFAULT NULL,
   `otherserial` varchar(255) DEFAULT NULL,
@@ -9903,14 +9909,19 @@ CREATE TABLE `glpi_assets_assets` (
   `is_recursive` tinyint NOT NULL DEFAULT '0',
   `is_deleted` tinyint NOT NULL DEFAULT '0',
   `is_template` tinyint NOT NULL DEFAULT '0',
+  `is_dynamic` tinyint NOT NULL DEFAULT '0',
   `template_name` varchar(255) DEFAULT NULL,
+  `autoupdatesystems_id` int unsigned NOT NULL DEFAULT '0',
   `date_creation` timestamp NULL DEFAULT NULL,
   `date_mod` timestamp NULL DEFAULT NULL,
+  `last_inventory_update` timestamp NULL DEFAULT NULL,
+  `custom_fields` json,
   PRIMARY KEY (`id`),
   KEY `assets_assetdefinitions_id` (`assets_assetdefinitions_id`),
   KEY `assets_assetmodels_id` (`assets_assetmodels_id`),
   KEY `assets_assettypes_id` (`assets_assettypes_id`),
   KEY `name` (`name`),
+  KEY `uuid` (`uuid`),
   KEY `users_id` (`users_id`),
   KEY `users_id_tech` (`users_id_tech`),
   KEY `locations_id` (`locations_id`),
@@ -9920,6 +9931,8 @@ CREATE TABLE `glpi_assets_assets` (
   KEY `is_recursive` (`is_recursive`),
   KEY `is_deleted` (`is_deleted`),
   KEY `is_template` (`is_template`),
+  KEY `is_dynamic` (`is_dynamic`),
+  KEY `autoupdatesystems_id` (`autoupdatesystems_id`),
   KEY `date_creation` (`date_creation`),
   KEY `date_mod` (`date_mod`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
@@ -9976,6 +9989,65 @@ CREATE TABLE `glpi_groups_items` (
   UNIQUE KEY `unicity` (`groups_id`,`itemtype`,`items_id`, `type`),
   KEY `item` (`itemtype`, `items_id`),
   KEY `type` (`type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
+
+DROP TABLE IF EXISTS `glpi_dropdowns_dropdowndefinitions`;
+CREATE TABLE `glpi_dropdowns_dropdowndefinitions` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `system_name` varchar(255) DEFAULT NULL,
+  `icon` varchar(255) DEFAULT NULL,
+  `comment` text,
+  `is_active` tinyint NOT NULL DEFAULT '0',
+  `profiles` JSON NOT NULL,
+  `translations` JSON NOT NULL,
+  `date_creation` timestamp NULL DEFAULT NULL,
+  `date_mod` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `system_name` (`system_name`),
+  KEY `is_active` (`is_active`),
+  KEY `date_creation` (`date_creation`),
+  KEY `date_mod` (`date_mod`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
+
+DROP TABLE IF EXISTS `glpi_dropdowns_dropdowns`;
+CREATE TABLE `glpi_dropdowns_dropdowns` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `dropdowns_dropdowndefinitions_id` int unsigned NOT NULL,
+  `name` varchar(255) DEFAULT NULL,
+  `comment` text,
+  `entities_id` int unsigned NOT NULL DEFAULT '0',
+  `is_recursive` tinyint NOT NULL DEFAULT '0',
+  `dropdowns_dropdowns_id` int unsigned NOT NULL DEFAULT '0',
+  `completename` text,
+  `level` int NOT NULL DEFAULT '0',
+  `ancestors_cache` longtext,
+  `sons_cache` longtext,
+  `date_creation` timestamp NULL DEFAULT NULL,
+  `date_mod` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `dropdowns_dropdowndefinitions_id` (`dropdowns_dropdowndefinitions_id`),
+  KEY `name` (`name`),
+  KEY `entities_id` (`entities_id`),
+  KEY `is_recursive` (`is_recursive`),
+  KEY `dropdowns_dropdowns_id` (`dropdowns_dropdowns_id`),
+  KEY `level` (`level`),
+  KEY `date_creation` (`date_creation`),
+  KEY `date_mod` (`date_mod`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
+
+DROP TABLE IF EXISTS `glpi_assets_customfielddefinitions`;
+CREATE TABLE `glpi_assets_customfielddefinitions` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `assets_assetdefinitions_id` int unsigned NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `label` varchar(255) NOT NULL,
+  `type` varchar(255) NOT NULL,
+  `field_options` json,
+  `itemtype` VARCHAR(255) NULL DEFAULT NULL,
+  `default_value` text,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unicity` (`assets_assetdefinitions_id`, `name`),
+  KEY `name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
 SET FOREIGN_KEY_CHECKS=1;

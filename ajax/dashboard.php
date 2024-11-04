@@ -35,15 +35,18 @@
 
 use Glpi\Application\ErrorHandler;
 use Glpi\Dashboard\Grid;
+use Glpi\Exception\Http\AccessDeniedHttpException;
 
 if (!isset($_REQUEST["action"])) {
-    exit;
+    return;
 }
 
 // Parse stringified JSON payload (Used to preserve integers)
 $request_data = array_merge($_REQUEST, json_decode($_REQUEST['data'] ?? '{}', true));
 unset($request_data['data']);
 
+// Session check is disabled for this script (see `\Glpi\Http\Firewall::computeStrategyForCoreLegacyScript()`)
+// to be able to adapt the checks depending on the request.
 $embed = false;
 if (
     in_array($_REQUEST['action'], ['get_dashboard_items', 'get_card', 'get_cards'])
@@ -51,8 +54,7 @@ if (
     && (bool)$request_data['embed']
 ) {
     if (Grid::checkToken($request_data) === false) {
-        http_response_code(403);
-        exit;
+        throw new AccessDeniedHttpException();
     }
     $embed = true;
 } else {
@@ -64,87 +66,79 @@ $dashboard = new Glpi\Dashboard\Dashboard($_REQUEST['dashboard'] ?? "");
 switch ($_POST['action'] ?? null) {
     case 'save_new_dashboard':
         if (!Session::haveRight('dashboard', CREATE)) {
-            http_response_code(403);
-            exit();
+            throw new AccessDeniedHttpException();
         }
 
         echo $dashboard->saveNew(
             $_POST['title']   ?? "",
             $_POST['context'] ?? ""
         );
-        exit;
+        return;
 
     case 'save_items':
         if (!$dashboard->canUpdateCurrent()) {
-            http_response_code(403);
-            exit();
+            throw new AccessDeniedHttpException();
         }
 
         $dashboard->saveitems($_POST['items'] ?? []);
         $dashboard->saveTitle($_POST['title'] ?? "");
-        exit;
+        return;
 
     case 'save_rights':
         if (!$dashboard->canUpdateCurrent()) {
-            http_response_code(403);
-            exit();
+            throw new AccessDeniedHttpException();
         }
 
         $dashboard->setPrivate($_POST['is_private'] != '0');
         $dashboard->saveRights($_POST['rights'] ?? []);
-        exit;
+        return;
 
     case 'save_filter_data':
         if (!$dashboard->canViewCurrent()) {
-            http_response_code(403);
-            exit();
+            throw new AccessDeniedHttpException();
         }
 
         $dashboard->saveFilter($_POST['filters'] ?? []);
-        exit;
+        return;
 
     case 'delete_dashboard':
         if (!$dashboard->canDeleteCurrent()) {
-            http_response_code(403);
-            exit();
+            throw new AccessDeniedHttpException();
         }
 
         echo $dashboard->delete(['key' => $_POST['dashboard']]);
-        exit;
+        return;
 
     case 'set_last_dashboard':
         $grid = new Grid($_POST['dashboard'] ?? "");
         $grid->setLastDashboard($_POST['page'], $_POST['dashboard']);
-        exit;
+        return;
 
     case 'clone_dashboard':
         if (!Session::haveRight('dashboard', CREATE) || !$dashboard->canViewCurrent()) {
-            http_response_code(403);
-            exit();
+            throw new AccessDeniedHttpException();
         }
 
         $new_dashboard = $dashboard->cloneCurrent();
         echo json_encode($new_dashboard);
-        exit;
+        return;
 
     case 'disable_placeholders':
         if (!Session::haveRight(Config::$rightname, UPDATE)) {
-            http_response_code(403);
-            exit();
+            throw new AccessDeniedHttpException();
         }
         Config::setConfigurationValues('core', ['is_demo_dashboards' => 0]);
-        exit();
+        return;
 }
 
 switch ($_GET['action'] ?? null) {
     case 'get_filter_data':
         if (!$dashboard->canViewCurrent()) {
-            http_response_code(403);
-            exit();
+            throw new AccessDeniedHttpException();
         }
 
         echo $dashboard->getFilter();
-        exit;
+        return;
 }
 
 \Glpi\Debug\Profiler::getInstance()->start('Grid::construct');
@@ -155,8 +149,7 @@ header("Content-Type: text/html; charset=UTF-8");
 switch ($_REQUEST['action']) {
     case 'add_new':
         if (!Session::haveRight('dashboard', CREATE)) {
-            http_response_code(403);
-            exit();
+            throw new AccessDeniedHttpException();
         }
 
         $grid->displayAddDashboardForm();
@@ -165,8 +158,7 @@ switch ($_REQUEST['action']) {
     case 'edit_rights':
         // FIXME This endpoint does not seems to be used.
         if (!Session::haveRight('dashboard', UPDATE)) {
-            http_response_code(403);
-            exit();
+            throw new AccessDeniedHttpException();
         }
 
         $grid->displayEditRightsForm();
@@ -175,8 +167,7 @@ switch ($_REQUEST['action']) {
     case 'display_edit_widget':
     case 'display_add_widget':
         if (!$dashboard->canUpdateCurrent()) {
-            http_response_code(403);
-            exit();
+            throw new AccessDeniedHttpException();
         }
 
         $grid->displayWidgetForm($_REQUEST);
@@ -184,8 +175,7 @@ switch ($_REQUEST['action']) {
 
     case 'display_embed_form':
         if (!Session::haveRight('dashboard', UPDATE)) {
-            http_response_code(403);
-            exit();
+            throw new AccessDeniedHttpException();
         }
 
         $grid->displayEmbedForm();
@@ -193,8 +183,7 @@ switch ($_REQUEST['action']) {
 
     case 'get_card':
         if (!$dashboard->canViewCurrent() && !$embed) {
-            http_response_code(403);
-            exit();
+            throw new AccessDeniedHttpException();
         }
 
         Session::writeClose();
@@ -205,8 +194,7 @@ switch ($_REQUEST['action']) {
 
     case 'get_cards':
         if (!$dashboard->canViewCurrent() && !$embed) {
-            http_response_code(403);
-            exit();
+            throw new AccessDeniedHttpException();
         }
 
         Session::writeClose();
@@ -230,24 +218,21 @@ switch ($_REQUEST['action']) {
 
     case 'display_add_filter':
         if (!$dashboard->canUpdateCurrent()) {
-            http_response_code(403);
-            exit();
+            throw new AccessDeniedHttpException();
         }
 
         $grid->displayFilterForm($_REQUEST);
         break;
     case 'get_dashboard_filters':
         if (!Session::haveRight('dashboard', READ)) {
-            http_response_code(403);
-            exit();
+            throw new AccessDeniedHttpException();
         }
 
         echo $grid->getFiltersSetHtml($_REQUEST['filters'] ?? []);
         break;
     case 'get_filter':
         if (!Session::haveRight('dashboard', READ)) {
-            http_response_code(403);
-            exit();
+            throw new AccessDeniedHttpException();
         }
 
         echo $grid->getFilterHtml($_REQUEST['filter_id']);
@@ -255,8 +240,7 @@ switch ($_REQUEST['action']) {
 
     case 'get_dashboard_items':
         if (!$dashboard->canViewCurrent() && !$embed) {
-            http_response_code(403);
-            exit();
+            throw new AccessDeniedHttpException();
         }
 
         echo $grid->getGridItemsHtml(true, $_REQUEST['embed'] ?? false);

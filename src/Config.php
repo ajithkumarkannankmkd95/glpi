@@ -96,11 +96,11 @@ class Config extends CommonDBTM
             $menu['page']    = Config::getFormURL(false);
             $menu['icon']    = Config::getIcon();
 
-            $menu['options']['apiclient']['icon']            = APIClient::getIcon();
-            $menu['options']['apiclient']['title']           = APIClient::getTypeName(Session::getPluralNumber());
-            $menu['options']['apiclient']['page']            = Config::getFormURL(false) . '?forcetab=Config$8';
-            $menu['options']['apiclient']['links']['search'] = Config::getFormURL(false) . '?forcetab=Config$8';
-            $menu['options']['apiclient']['links']['add']    = '/front/apiclient.form.php';
+            $menu['options'][APIClient::class]['icon']            = APIClient::getIcon();
+            $menu['options'][APIClient::class]['title']           = APIClient::getTypeName(Session::getPluralNumber());
+            $menu['options'][APIClient::class]['page']            = Config::getFormURL(false) . '?forcetab=Config$8';
+            $menu['options'][APIClient::class]['links']['search'] = Config::getFormURL(false) . '?forcetab=Config$8';
+            $menu['options'][APIClient::class]['links']['add']    = '/front/apiclient.form.php';
         }
         if (count($menu)) {
             return $menu;
@@ -274,7 +274,7 @@ class Config extends CommonDBTM
        // Add skipMaintenance if maintenance mode update
         if (isset($input['maintenance_mode']) && $input['maintenance_mode']) {
             $_SESSION['glpiskipMaintenance'] = 1;
-            $url = htmlspecialchars($CFG_GLPI['root_doc'] . "/index.php?skipMaintenance=1");
+            $url = htmlescape($CFG_GLPI['root_doc'] . "/index.php?skipMaintenance=1");
             Session::addMessageAfterRedirect(
                 sprintf(
                     __s('Maintenance mode activated. Backdoor using: %s'),
@@ -458,12 +458,8 @@ class Config extends CommonDBTM
 
         $canedit = static::canUpdate();
         $item_devices_types = [];
-        foreach ($CFG_GLPI['itemdevices'] as $key => $itemtype) {
-            if (is_subclass_of($itemtype, CommonDBTM::class)) {
-                $item_devices_types[$itemtype] = $itemtype::getTypeName();
-            } else {
-                unset($CFG_GLPI['itemdevices'][$key]);
-            }
+        foreach (Item_Devices::getDeviceTypes() as $itemtype) {
+            $item_devices_types[$itemtype] = $itemtype::getTypeName();
         }
 
         TemplateRenderer::getInstance()->display('pages/setup/general/assets_setup.html.twig', [
@@ -986,6 +982,9 @@ class Config extends CommonDBTM
                 'version' => TCPDF_STATIC::getTCPDFVersion(),
                 'check'   => 'TCPDF'
             ],
+            [ 'name'      => 'tecnickcom/tc-lib-barcode',
+                'check'   => 'Com\\Tecnick\\Barcode\\Barcode'
+            ],
             [ 'name'    => 'sabre/dav',
                 'check'   => 'Sabre\\DAV\\Version'
             ],
@@ -1072,6 +1071,9 @@ class Config extends CommonDBTM
             ],
             [ 'name'    => 'psr/cache',
                 'check'   => 'Psr\\Cache\\CacheItemPoolInterface'
+            ],
+            [ 'name'    => 'psr/container',
+                'check'   => 'Psr\\Container\\ContainerInterface'
             ],
             [ 'name'    => 'league/csv',
                 'check'   => 'League\\Csv\\Writer'
@@ -1197,6 +1199,14 @@ class Config extends CommonDBTM
             [
                 'name' => 'symfony/serializer',
                 'check' => 'Symfony\Component\Serializer\Serializer'
+            ],
+            [
+                'name' => 'symfony/property-info',
+                'check' => 'Symfony\Component\PropertyInfo\Type'
+            ],
+            [
+                'name' => 'symfony/error-handler',
+                'check' => 'Symfony\Component\ErrorHandler\ErrorHandler'
             ],
         ];
         return $deps;
@@ -1488,7 +1498,7 @@ class Config extends CommonDBTM
      * @param boolean $fordebug display for debug (no html required) (false by default)
      * @param string  $version  Version to check (mainly from install), defaults to null
      *
-     * @return integer 2: missing extension,  1: missing optionnal extension, 0: OK,
+     * @return integer 2: missing extension,  1: missing optional extension, 0: OK,
      **/
     public static function displayCheckDbEngine($fordebug = false, $version = null)
     {
@@ -1512,7 +1522,7 @@ class Config extends CommonDBTM
             echo $message . "\n";
         } else {
             $img = "<img src='" . $CFG_GLPI['root_doc'] . "/pics/";
-            $img .= ($error > 0 ? "ko_min" : "ok_min") . ".png' alt='$message' title='$message'/>";
+            $img .= ($error > 0 ? "ko_min" : "ok_min") . ".png' alt='" . htmlescape($message) . "' title='" . htmlescape($message) . "'/>";
 
             if ($fordebug) {
                 echo $img . $message . "\n";
@@ -1599,6 +1609,9 @@ class Config extends CommonDBTM
                     'required'  => true,
                 ],
                 'simplexml' => [
+                    'required'  => true,
+                ],
+                'bcmath' => [
                     'required'  => true,
                 ],
             //to sync/connect from LDAP
@@ -1983,7 +1996,7 @@ class Config extends CommonDBTM
             'class'   => 'purgelog_interval'
         ], $options);
 
-        $out = "<div class='{$options['class']}'>";
+        $out = "<div class='" . htmlescape($options['class']) . "'>";
         $out .= Dropdown::showFromArray($name, $values, $options);
         $out .= "</div>";
 

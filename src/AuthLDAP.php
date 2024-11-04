@@ -183,6 +183,11 @@ class AuthLDAP extends CommonDBTM
         return _n('LDAP directory', 'LDAP directories', $nb);
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['config', Auth::class, self::class];
+    }
+
     public static function canCreate(): bool
     {
         return static::canUpdate();
@@ -2923,7 +2928,7 @@ TWIG, $twig_params);
                     ];
                 }
             } catch (\RuntimeException $e) {
-                ErrorHandler::getInstance()->handleException($e);
+                ErrorHandler::getInstance()->handleException($e, false);
                 return false;
             }
         }
@@ -3882,13 +3887,13 @@ TWIG, $twig_params);
                     }
 
                     echo "<tr><td style='width: 250px' class='text-end'><label for='basedn'>" . __('BaseDN') . "</label></td><td colspan='3'>";
-                    echo "<input type='text' class='form-control' id='basedn' name='basedn' value=\"" . htmlspecialchars($_SESSION['ldap_import']['basedn'], ENT_QUOTES) .
+                    echo "<input type='text' class='form-control' id='basedn' name='basedn' value=\"" . htmlescape($_SESSION['ldap_import']['basedn']) .
                      "\" " . (!$_SESSION['ldap_import']['basedn'] ? "disabled" : "") . ">";
                     echo "</td></tr>";
 
                     echo "<tr><td class='text-end'><label for='ldap_filter'>" . __('Search filter for users') . "</label></td><td colspan='3'>";
                     echo "<input type='text' class='form-control' id='ldap_filter' name='ldap_filter' value=\"" .
-                      htmlspecialchars($_SESSION['ldap_import']['ldap_filter'], ENT_QUOTES) . "\">";
+                      htmlescape($_SESSION['ldap_import']['ldap_filter']) . "\">";
                     echo "</td></tr>";
                 }
                 break;
@@ -3992,7 +3997,7 @@ TWIG, $twig_params);
                         $field_counter++;
                         $field_value = '';
                         if (isset($_SESSION['ldap_import']['criterias'][$field])) {
-                            $field_value = htmlspecialchars($_SESSION['ldap_import']['criterias'][$field]);
+                            $field_value = htmlescape($_SESSION['ldap_import']['criterias'][$field]);
                         }
                         echo "<input type='text' class='form-control' id='criterias$field' name='criterias[$field]' value='$field_value'>";
                         echo "</td>";
@@ -4163,7 +4168,7 @@ TWIG, $twig_params);
         global $DB;
 
         $it = $DB->request([
-            'FROM' => 'glpi_authldaps',
+            'FROM' => self::getTable(),
             'WHERE' => ['is_default' => 1, 'is_active' => 1],
             'LIMIT' => 1,
         ]);
@@ -4418,7 +4423,7 @@ TWIG, $twig_params);
             && $item->can($item->getField('id'), READ)
         ) {
             $ong     = [];
-            $ong[1]  = self::createTabEntry(_sx('button', 'Test'), 0, $item::class, "ti ti-stethoscope"); // test connexion
+            $ong[1]  = self::createTabEntry(_x('button', 'Test'), 0, $item::class, "ti ti-stethoscope"); // test connexion
             $ong[2]  = self::createTabEntry(User::getTypeName(Session::getPluralNumber()), 0, $item::class, User::getIcon());
             $ong[3]  = self::createTabEntry(Group::getTypeName(Session::getPluralNumber()), 0, $item::class, User::getIcon());
             $ong[5]  = self::createTabEntry(__('Advanced information'));   // params for entity advanced config

@@ -34,6 +34,12 @@
 
 namespace GlpiPlugin\Tester;
 
-final class MyPsr4Class
+use CommonDBTM;
+
+final class MyPsr4Class extends CommonDBTM
 {
+    public static function getTypeName($nb = 0): string
+    {
+        return 'Tester plugin PSR4 itemtype';
+    }
 }

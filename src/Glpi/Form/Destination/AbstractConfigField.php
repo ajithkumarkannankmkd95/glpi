@@ -39,9 +39,16 @@ use Glpi\DBAL\JsonFieldInterface;
 use Glpi\Form\Form;
 use LogicException;
 use Override;
+use Toolbox;
 
 abstract class AbstractConfigField implements ConfigFieldInterface
 {
+    #[Override]
+    final public static function getKey(): string
+    {
+        return Toolbox::slugify(static::class);
+    }
+
     #[Override]
     public function supportAutoConfiguration(): bool
     {
@@ -82,9 +89,9 @@ abstract class AbstractConfigField implements ConfigFieldInterface
         return $config[$this->getAutoConfigKey()] ?? true;
     }
 
-    public function getAutoConfigKey(): string
+    public static function getAutoConfigKey(): string
     {
-        return $this->getKey() . '_auto';
+        return static::getKey() . '_auto';
     }
 
     #[Override]

@@ -34,8 +34,7 @@
  */
 
 use Glpi\Event;
-
-Session::checkLoginUser();
+use Glpi\Exception\Http\BadRequestHttpException;
 
 $inquest = new ChangeSatisfaction();
 
@@ -54,4 +53,4 @@ if (isset($_POST["update"])) {
     Html::back();
 }
 
-Html::displayErrorAndDie('Lost');
+throw new BadRequestHttpException();

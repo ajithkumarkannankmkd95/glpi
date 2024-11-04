@@ -396,14 +396,10 @@ class ComputerTest extends DbTestCase
         $iter = $DB->request(['SELECT' => 'id',
             'FROM'   => 'glpi_computers'
         ]);
-        $prev = false;
         foreach (\Computer::getFromIter($iter) as $comp) {
             $this->assertInstanceOf(\Computer::class, $comp);
             $this->assertArrayHasKey('name', $comp->fields);
-            $this->assertNotEquals($prev, $comp->fields['name']);
-            $prev = $comp->fields['name'];
         }
-        $this->assertTrue((bool)$prev); // we are retrieve something
     }
 
     public function testGetFromDbByCrit()
@@ -599,10 +595,10 @@ class ComputerTest extends DbTestCase
         // clone!
         $computer = new \Computer(); //$computer->fields contents is already escaped!
         $this->assertTrue($computer->getFromDB($id));
-        $infocom_auto_create_original = $CFG_GLPI["infocom_auto_create"] ?? 0;
-        $CFG_GLPI["infocom_auto_create"] = 1;
+        $auto_create_infocoms_original = $CFG_GLPI["auto_create_infocoms"] ?? 0;
+        $CFG_GLPI["auto_create_infocoms"] = 1;
         $added = $computer->clone();
-        $CFG_GLPI["infocom_auto_create"] = $infocom_auto_create_original;
+        $CFG_GLPI["auto_create_infocoms"] = $auto_create_infocoms_original;
         $this->assertGreaterThan(0, (int)$added);
         $this->assertNotEquals($computer->fields['id'], $added);
 
@@ -771,7 +767,7 @@ class ComputerTest extends DbTestCase
 
         // Check that there is no saveInput already
         if (isset($_SESSION['saveInput']) && is_array($_SESSION['saveInput'])) {
-            $this->array($_SESSION['saveInput'])->notHasKey('Computer');
+            $this->assertArrayNotHasKey(\Computer::class, $_SESSION['saveInput']);
         }
         $computer = $this->getNewComputer();
         $cid = $computer->fields['id'];
@@ -784,7 +780,7 @@ class ComputerTest extends DbTestCase
 
         // Check that there is no savedInput after update
         if (isset($_SESSION['saveInput']) && is_array($_SESSION['saveInput'])) {
-            $this->array($_SESSION['saveInput'])->notHasKey('Computer');
+            $this->assertArrayNotHasKey(\Computer::class, $_SESSION['saveInput']);
         }
     }
 
@@ -894,12 +890,12 @@ class ComputerTest extends DbTestCase
         yield [
             "C1",
             "Test",
-            "Test: <a  href='/glpi/front/computer.form.php?id=CID'  title=\"Computer 1\">Computer 1</a>"
+            'Test: <a href="/glpi/front/computer.form.php?id=CID" title="Computer 1">Computer 1</a>'
         ];
         yield [
             "C2",
             "Test",
-            "Test: <a  href='/glpi/front/computer.form.php?id=CID'  title=\"Computer 2\">Computer 2</a>"
+            'Test: <a href="/glpi/front/computer.form.php?id=CID" title="Computer 2">Computer 2</a>'
         ];
 
         // Test message without link

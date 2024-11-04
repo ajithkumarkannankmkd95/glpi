@@ -34,14 +34,14 @@
  */
 
 use Glpi\Application\ErrorHandler;
+use Glpi\Exception\Http\AccessDeniedHttpException;
+use Glpi\Exception\Http\BadRequestHttpException;
+use Glpi\Exception\Http\NotFoundHttpException;
 
 Html::header_nocache();
 
-Session::checkLoginUser();
-
 if ($_SESSION['glpi_use_mode'] !== Session::DEBUG_MODE) {
-    http_response_code(403);
-    die();
+    throw new AccessDeniedHttpException();
 }
 
 \Glpi\Debug\Profiler::getInstance()->disable();
@@ -56,16 +56,14 @@ if (isset($_GET['ajax_id'])) {
     // as we have to delete profile from `$_SESSION` during the pull operation.
     session_write_close();
 
+    header('Content-Type: application/json');
     if ($profile) {
         $data = $profile->getDebugInfo();
         if ($data) {
-            header('Content-Type: application/json');
             echo json_encode($data);
-            die();
         }
     }
-    http_response_code(404);
-    die();
+    return;
 }
 
 if (isset($_GET['action'])) {
@@ -87,19 +85,19 @@ if (isset($_GET['action'])) {
         sort($glpi_classes);
         header('Content-Type: application/json');
         echo json_encode($glpi_classes);
-        die();
+        return;
     }
     if ($action === 'get_search_options' && isset($_GET['itemtype'])) {
         header('Content-Type: application/json');
         $class = $_GET['itemtype'];
         if (!class_exists($class) || !is_subclass_of($class, 'CommonDBTM')) {
             echo '[]';
-            die();
+            return;
         }
         $reflection_class = new ReflectionClass($class);
         if ($reflection_class->isAbstract()) {
             echo '[]';
-            die();
+            return;
         }
         // In some cases, a class that isn't a proper itemtype may show in the selection box and this would trigger a SQL error that cannot be caught.
         ErrorHandler::getInstance()->disableOutput();
@@ -114,15 +112,14 @@ if (isset($_GET['action'])) {
             return is_numeric($k);
         }, ARRAY_FILTER_USE_KEY);
         echo json_encode($options);
-        die();
+        return;
     }
     if ($action === 'get_themes') {
         header('Content-Type: application/json');
         $themes = \Glpi\UI\ThemeManager::getInstance()->getAllThemes();
         echo json_encode($themes);
-        die();
+        return;
     }
 }
 
-http_response_code(400);
-die();
+throw new BadRequestHttpException();

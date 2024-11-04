@@ -33,7 +33,7 @@
  * ---------------------------------------------------------------------
  */
 
-use Glpi\Http\Response;
+use Glpi\Exception\Http\BadRequestHttpException;
 
 /** @var array $CFG_GLPI */
 global $CFG_GLPI;
@@ -41,16 +41,13 @@ global $CFG_GLPI;
 header("Content-Type: text/html; charset=UTF-8");
 Html::header_nocache();
 
-Session::checkLoginUser();
-
 // Read parameters
 $context  = $_POST['context'] ?? '';
 $itemtype = $_POST["itemtype"] ?? '';
 
 // Check for required params
 if (empty($itemtype)) {
-    Response::sendError(400, "Bad request: itemtype cannot be empty", Response::CONTENT_TYPE_TEXT_HTML);
-    die;
+    throw new BadRequestHttpException("Bad request: itemtype cannot be empty");
 }
 
 // Check if itemtype is valid in the given context
@@ -80,7 +77,7 @@ if ($isValidItemtype) {
         'multiple'            => (int) ($_POST["multiple"] ?? 0) !== 0,
         'myname'              => $_POST["myname"],
         'rand'                => $_POST["rand"],
-        'width'               => 'calc(100% - 25px)',
+        'width'               => $_POST["width"] ?? 'calc(100% - 25px)',
         '_idor_token'         => Session::getNewIDORToken($itemtype, [
             'entity_restrict' => Session::getMatchingActiveEntities($_POST['entity_restrict']),
         ]),
@@ -106,7 +103,7 @@ if ($isValidItemtype) {
 
     // Auto update summary of active or just solved tickets
     if (($_POST['source_itemtype'] ?? null) === Ticket::class) {
-        $myname = htmlspecialchars($_POST["myname"]);
+        $myname = htmlescape($_POST["myname"]);
         echo "<span id='item_ticket_selection_information{$myname}_$rand' class='ms-1'></span>";
         Ajax::updateItemOnSelectEvent(
             $field_id,

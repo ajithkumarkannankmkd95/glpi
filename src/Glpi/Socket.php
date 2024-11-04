@@ -319,6 +319,11 @@ class Socket extends CommonDBChild
         return _n('Socket', 'Sockets', $nb);
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['assets', Cable::class, self::class];
+    }
+
     public function rawSearchOptions()
     {
         $tab  = parent::rawSearchOptions();
@@ -464,7 +469,6 @@ class Socket extends CommonDBChild
 
             case 'wiring_side':
                 return self::dropdownWiringSide($name, $options);
-            break;
         }
         return parent::getSpecificValueToSelect($field, $name, $values, $options);
     }
@@ -493,10 +497,8 @@ class Socket extends CommonDBChild
                     }
                 }
                 return ' ';
-            break;
             case 'wiring_side':
                 return self::getWiringSideName($values[$field]);
-            break;
         }
         return parent::getSpecificValueToDisplay($field, $values, $options);
     }
@@ -683,16 +685,16 @@ class Socket extends CommonDBChild
             $socket_name = $canedit
                 ? sprintf(
                     '<a href="%s">%s</a>',
-                    htmlspecialchars($socket->getLinkURL()),
-                    htmlspecialchars($socket->fields['name'])
+                    htmlescape($socket->getLinkURL()),
+                    htmlescape($socket->fields['name'])
                 )
-                : htmlspecialchars($socket->fields['name']);
+                : htmlescape($socket->fields['name']);
             $netport_name = '';
             if ($networkport->getFromDB($socket->fields["networkports_id"])) {
                 $netport_name = sprintf(
                     '<a href="%s">%s</a>',
-                    htmlspecialchars($networkport->getLinkURL()),
-                    htmlspecialchars($networkport->fields['name'])
+                    htmlescape($networkport->getLinkURL()),
+                    htmlescape($networkport->fields['name'])
                 );
             }
             $has_cable = $cable->getFromDBByCrit([
@@ -705,8 +707,8 @@ class Socket extends CommonDBChild
             $cable_name = $has_cable
                 ? sprintf(
                     '<a href="%s">%s</a>',
-                    htmlspecialchars($cable->getLinkURL()),
-                    htmlspecialchars($cable->getName())
+                    htmlescape($cable->getLinkURL()),
+                    htmlescape($cable->getName())
                 )
                 : '';
             $itemtype = '';
@@ -728,8 +730,8 @@ class Socket extends CommonDBChild
                 $itemtype_label = $endpoint::getType();
                 $item_label = sprintf(
                     '<a href="%s">%s</a>',
-                    htmlspecialchars($endpoint->getLinkURL()),
-                    htmlspecialchars($endpoint->getName())
+                    htmlescape($endpoint->getLinkURL()),
+                    htmlescape($endpoint->getName())
                 );
             } else {
                 $itemtype_label = '';
@@ -835,13 +837,13 @@ class Socket extends CommonDBChild
             'START' => $start,
             'LIMIT' => $_SESSION['glpilist_limit']
         ]);
-        $socket_form_url = htmlspecialchars(self::getFormURL());
+        $socket_form_url = htmlescape(self::getFormURL());
 
         foreach ($it as $data) {
             $name = sprintf(
                 '<a href="%s">%s</a>',
-                htmlspecialchars(self::getFormURLWithID($data['id'])),
-                htmlspecialchars($data['name'])
+                htmlescape(self::getFormURLWithID($data['id'])),
+                htmlescape($data['name'])
             );
 
             $socketmodel = new SocketModel();
@@ -912,9 +914,9 @@ class Socket extends CommonDBChild
      * @param $options   array
      **/
     public static function getHTMLTableCellsForItem(
-        HTMLTableRow $row = null,
-        CommonDBTM $item = null,
-        HTMLTableCell $father = null,
+        ?HTMLTableRow $row = null,
+        ?CommonDBTM $item = null,
+        ?HTMLTableCell $father = null,
         $options = []
     ) {
 

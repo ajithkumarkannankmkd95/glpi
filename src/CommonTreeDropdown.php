@@ -583,19 +583,22 @@ TWIG, $twig_params);
 
         $entries = [];
         $values_cache = [];
-        $form_url = static::getFormURL();
         foreach ($result as $data) {
             $entry = [
                 'itemtype' => static::class,
                 'id'       => $data['id'],
             ];
-            $name = htmlspecialchars($data['name']);
+            $name = htmlescape($data['name']);
             if (
                 (($fk === 'entities_id') && in_array($data['id'], $_SESSION['glpiactiveentities'], true))
                 || !$entity_assign
                 || (($fk !== 'entities_id') && in_array($data['entities_id'], $_SESSION['glpiactiveentities'], true))
             ) {
-                $entry['name'] = "<a href='{$form_url}?id={$data['id']}'>{$name}</a>";
+                $entry['name'] = sprintf(
+                    '<a href="%s">%s</a>',
+                    htmlescape(static::getFormURLWithID($data['id'])),
+                    $name
+                );
             } else {
                 $entry['name'] = $name;
             }
@@ -669,7 +672,7 @@ TWIG, $twig_params);
             'showmassiveactions' => static::canUpdate(),
             'massiveactionparams' => [
                 'num_displayed' => count($entries),
-                'container'     => 'mass' . static::class . mt_rand()
+                'container'     => 'mass' . Toolbox::slugify(static::class) . mt_rand()
             ]
         ]);
     }
@@ -799,6 +802,7 @@ TWIG, $twig_params);
             'field'             => 'name',
             'name'              => __('Name'),
             'datatype'          => 'itemlink',
+            'massiveaction'     => false,
         ];
 
         $tab[] = [

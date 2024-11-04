@@ -33,6 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Helpdesk\DefaultDataManager;
+use Glpi\Form\Form;
 use Glpi\Rules\RulesManager;
 use Glpi\System\Diagnostic\DatabaseSchemaIntegrityChecker;
 use Glpi\Toolbox\VersionParser;
@@ -202,7 +204,6 @@ class Update
 
         if (version_compare($current_version, '0.85.5', 'lt')) {
             die('Upgrade from version < 0.85.5 is not supported!');
-            die(1);
         }
 
         $DB = $this->DB;
@@ -275,6 +276,10 @@ class Update
                 );
             }
         }
+
+        // Create default forms
+        $helpdesk_data_manager = new DefaultDataManager();
+        $helpdesk_data_manager->initializeDataIfNeeded();
 
         // Initalize rules
         $this->migration->displayTitle(__('Initializing rules...'));

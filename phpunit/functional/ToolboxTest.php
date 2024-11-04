@@ -451,11 +451,11 @@ class ToolboxTest extends DbTestCase
     {
         // Save an image twice
         $test_file = __DIR__ . '/../../tests/files/test.png';
-        copy(__DIR__ . '/../../pics/add_dropdown.png', $test_file); // saved image will be removed from FS
+        copy(__DIR__ . '/../../public/pics/add_dropdown.png', $test_file); // saved image will be removed from FS
         $first_pict = \Toolbox::savePicture($test_file);
         $this->assertMatchesRegularExpression('#[^/]+/.+\.png#', $first_pict); // generated random name inside subdir
 
-        copy(__DIR__ . '/../../pics/add_dropdown.png', $test_file); // saved image will be removed from FS
+        copy(__DIR__ . '/../../public/pics/add_dropdown.png', $test_file); // saved image will be removed from FS
         $second_pict = \Toolbox::savePicture($test_file);
         $this->assertMatchesRegularExpression('#[^/]+/.+\.png#', $second_pict); // generated random name inside subdir
 
@@ -922,6 +922,30 @@ HTML;
                 'bg_color' => "#000000",
                 'offset'   => 50,
                 'fg_color' => '#808080',
+            ], [
+                'bg_color' => "rgba(255, 255, 255, 1)",
+                'offset'   => 40,
+                'fg_color' => '#999999',
+            ], [
+                'bg_color' => "rgba(255, 255, 255, 1)",
+                'offset'   => 50,
+                'fg_color' => '#808080',
+            ], [
+                'bg_color' => "rgba(0, 0, 0, 1)",
+                'offset'   => 40,
+                'fg_color' => '#666666',
+            ], [
+                'bg_color' => "rgba(0, 0, 0, 1)",
+                'offset'   => 50,
+                'fg_color' => '#808080',
+            ], [
+                'bg_color' => "rgba(0, 0, 0, 0.5)",
+                'offset'   => 40,
+                'fg_color' => '#666666',
+            ], [
+                'bg_color' => "rgba(0, 0, 0, 0.5)",
+                'offset'   => 50,
+                'fg_color' => '#808080',
             ],
         ];
     }
@@ -1121,7 +1145,7 @@ HTML;
 
        // Create a document to emulate a document upload
         $filename = 'foo.png';
-        copy(__DIR__ . '/../../tests/fixtures/uploads/foo.png', GLPI_TMP_DIR . '/' . $filename);
+        copy(FIXTURE_DIR . '/uploads/foo.png', GLPI_TMP_DIR . '/' . $filename);
         $tag = \Rule::getUuid();
         $input = [
             'filename' => 'foo.png',

@@ -57,20 +57,19 @@ class Item_RemoteManagement extends CommonDBChild
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
         $nb = 0;
-        switch ($item->getType()) {
-            default:
-                if ($_SESSION['glpishow_count_on_tabs']) {
-                    $nb = countElementsInTable(
-                        self::getTable(),
-                        [
-                            'items_id'     => $item->getID(),
-                            'itemtype'     => $item->getType()
-                        ]
-                    );
-                }
-                return self::createTabEntry(self::getTypeName(Session::getPluralNumber()), $nb, $item::getType());
+        if (
+            $_SESSION['glpishow_count_on_tabs']
+            && ($item instanceof CommonDBTM)
+        ) {
+            $nb = countElementsInTable(
+                self::getTable(),
+                [
+                    'items_id'     => $item->getID(),
+                    'itemtype'     => $item->getType()
+                ]
+            );
         }
-        return '';
+        return self::createTabEntry(self::getTypeName(Session::getPluralNumber()), $nb, $item::class);
     }
 
 
@@ -156,7 +155,7 @@ class Item_RemoteManagement extends CommonDBChild
     public function getRemoteLink(): string
     {
         $link = '<a href="%s" target="_blank">%s</a>';
-        $id = htmlspecialchars($this->fields['remoteid'] ?? '');
+        $id = htmlescape($this->fields['remoteid']);
         $href = null;
         switch ($this->fields['type']) {
             case self::TEAMVIEWER:

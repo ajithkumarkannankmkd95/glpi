@@ -295,16 +295,6 @@ class ITILFollowup extends CommonDBChild
             $this->input["users_id"]
         );
 
-
-        $donotif = !isset($this->input['_disablenotif']) && $CFG_GLPI["use_notifications"];
-
-        if ($donotif) {
-            $options = ['followup_id' => $this->fields["id"],
-                'is_private'  => $this->fields['is_private']
-            ];
-            NotificationEvent::raiseEvent("add_followup", $parentitem, $options, $this);
-        }
-
        // Add log entry in the ITILObject
         $changes = [
             0,
@@ -325,6 +315,15 @@ class ITILFollowup extends CommonDBChild
         PendingReason_Item::handlePendingReasonUpdateFromNewTimelineItem($this);
 
         parent::post_addItem();
+
+        $donotif = !isset($this->input['_disablenotif']) && $CFG_GLPI["use_notifications"];
+
+        if ($donotif) {
+            $options = ['followup_id' => $this->fields["id"],
+                'is_private'  => $this->fields['is_private']
+            ];
+            NotificationEvent::raiseEvent("add_followup", $parentitem, $options, $this);
+        }
     }
 
     private function addToMergedTickets(): void
@@ -912,10 +911,10 @@ class ITILFollowup extends CommonDBChild
     public static function showMassiveActionAddFollowupForm()
     {
         echo "<table class='tab_cadre_fixe'>";
-        echo '<tr><th colspan=4>' . __('Add a new followup') . '</th></tr>';
+        echo '<tr><th colspan=4>' . __s('Add a new followup') . '</th></tr>';
 
         echo "<tr class='tab_bg_2'>";
-        echo "<td>" . __('Source of followup') . "</td>";
+        echo "<td>" . __s('Source of followup') . "</td>";
         echo "<td>";
         RequestType::dropdown(
             [
@@ -927,7 +926,7 @@ class ITILFollowup extends CommonDBChild
         echo "</tr>";
 
         echo "<tr class='tab_bg_2'>";
-        echo "<td>" . __('Description') . "</td>";
+        echo "<td>" . __s('Description') . "</td>";
         echo "<td><textarea name='content' cols='50' rows='6'></textarea></td>";
         echo "</tr>";
 
@@ -963,7 +962,10 @@ class ITILFollowup extends CommonDBChild
                 $input = $ma->getInput();
                 $fup   = new self();
                 foreach ($ids as $id) {
-                    if ($item->getFromDB($id)) {
+                    if (
+                        ($item instanceof CommonITILObject)
+                        && $item->getFromDB($id)
+                    ) {
                         if (in_array($item->fields['status'], array_merge($item->getSolvedStatusArray(), $item->getClosedStatusArray()))) {
                             $ma->itemDone($item->getType(), $id, MassiveAction::ACTION_KO);
                             $ma->addMessage($item->getErrorMessage(ERROR_RIGHT));
@@ -1146,7 +1148,7 @@ class ITILFollowup extends CommonDBChild
      *
      * TODO 11.0 move method and `item` property into parent class
      *
-     * @param CommonITILObject Parent item
+     * @param CommonITILObject $parent Parent item
      *
      * @return void
      */

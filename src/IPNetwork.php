@@ -381,8 +381,13 @@ class IPNetwork extends CommonImplicitTreeDropdown
 
            // TODO : what is the best way ? recursive or not ?
             $sameNetworks = self::searchNetworks("equals", $params, $entities_id, false);
-           // Check unicity !
-            if ($sameNetworks && (count($sameNetworks) > 0)) {
+            // Check unicity !
+            if ($sameNetworks && count($sameNetworks) > 0) {
+                // Info: phpstan think $sameNetworks can't be empty for some reason,
+                // and thus warn us that the condition is always true (see baseline).
+                // This is probably a false positive due to some bad phpdoc somewhere,
+                // but I was not able to fint it.
+                // TODO: investigate.
                 return ['error' => __('Network already defined in visible entities'),
                     'input' => false
                 ];
@@ -465,7 +470,7 @@ class IPNetwork extends CommonImplicitTreeDropdown
         $preparedInput = $this->prepareInput($input);
 
         if (isset($preparedInput['error']) && !isset($input['_no_message'])) {
-            Session::addMessageAfterRedirect(htmlspecialchars($preparedInput['error']), false, ERROR);
+            Session::addMessageAfterRedirect(htmlescape($preparedInput['error']), false, ERROR);
         }
 
         $input = $preparedInput['input'];
@@ -483,7 +488,7 @@ class IPNetwork extends CommonImplicitTreeDropdown
         $preparedInput = $this->prepareInput($input);
 
         if (isset($preparedInput['error']) && !isset($input['_no_message'])) {
-            Session::addMessageAfterRedirect(htmlspecialchars($preparedInput['error']), false, ERROR);
+            Session::addMessageAfterRedirect(htmlescape($preparedInput['error']), false, ERROR);
         }
 
         $input = $preparedInput['input'];
@@ -755,7 +760,7 @@ class IPNetwork extends CommonImplicitTreeDropdown
         }
 
         if (!empty($condition["where"])) {
-            $WHERE .= " AND " . $condition["where"];
+            $WHERE[] = new QueryExpression($condition["where"]);
         }
 
         $iterator = $DB->request([
@@ -1009,7 +1014,7 @@ class IPNetwork extends CommonImplicitTreeDropdown
         $end   = [];
         for ($i = 0; $i < 4; ++$i) {
             $start[$i] = IPAddress::convertNegativeIntegerToPositiveFloat($address[$i] & $netmask[$i]);
-            $end[$i]   = IPAddress::convertNegativeIntegerToPositiveFloat($address[$i] | ~$netmask[$i]);
+            $end[$i]   = IPAddress::convertNegativeIntegerToPositiveFloat($address[$i] | ~(int)$netmask[$i]);
         }
 
         if ($excludeBroadcastAndNetwork) {
@@ -1043,8 +1048,8 @@ class IPNetwork extends CommonImplicitTreeDropdown
     public static function getHTMLTableHeader(
         $itemtype,
         HTMLTableBase $base,
-        HTMLTableSuperHeader $super = null,
-        HTMLTableHeader $father = null,
+        ?HTMLTableSuperHeader $super = null,
+        ?HTMLTableHeader $father = null,
         array $options = []
     ) {
 
@@ -1072,9 +1077,9 @@ class IPNetwork extends CommonImplicitTreeDropdown
      * @param $options   array
      **/
     public static function getHTMLTableCellsForItem(
-        HTMLTableRow $row = null,
-        CommonDBTM $item = null,
-        HTMLTableCell $father = null,
+        ?HTMLTableRow $row = null,
+        ?CommonDBTM $item = null,
+        ?HTMLTableCell $father = null,
         array $options = []
     ) {
         if (empty($item)) {

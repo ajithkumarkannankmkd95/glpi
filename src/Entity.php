@@ -50,9 +50,6 @@ class Entity extends CommonTreeDropdown
     public $must_be_replace             = true;
     public $dohistory                   = true;
 
-    public $first_level_menu            = "admin";
-    public $second_level_menu           = "entity";
-
     public static $rightname            = 'entity';
     protected $usenotepad               = true;
 
@@ -234,6 +231,11 @@ class Entity extends CommonTreeDropdown
         return _n('Entity', 'Entities', $nb);
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['admin', self::class];
+    }
+
     public static function canCreate(): bool
     {
         // Do not show the create button if no recusive access on current entity
@@ -365,6 +367,13 @@ class Entity extends CommonTreeDropdown
             $input['altitude'] = $parent->fields['altitude'];
         }
 
+        if (!array_key_exists('custom_css_code', $input) || $input['custom_css_code'] === null) {
+            // The `custom_css_code` field is a textfield and therefore has no default value.
+            // The `Entity::getUsedConfig()` does not correctly handle the `null` value found in the root entity.
+            // See https://github.com/glpi-project/glpi/pull/17648
+            $input['custom_css_code'] = '';
+        }
+
         if (!Session::isCron()) { // Filter input for connected
             $input = $this->checkRightDatas($input);
         }
@@ -389,6 +398,13 @@ class Entity extends CommonTreeDropdown
 
         $input = $this->handleConfigStrategyFields($input);
         $input = $this->handleSatisfactionSurveyConfigOnUpdate($input);
+
+        if (array_key_exists('custom_css_code', $input) && $input['custom_css_code'] === null) {
+            // The `custom_css_code` field is a textfield and therefore has no default value.
+            // The `Entity::getUsedConfig()` does not correctly handle the `null` value found in the root entity.
+            // See https://github.com/glpi-project/glpi/pull/17648
+            $input['custom_css_code'] = '';
+        }
 
         if (!Session::isCron()) { // Filter input for connected
             $input = $this->checkRightDatas($input);
@@ -557,6 +573,16 @@ class Entity extends CommonTreeDropdown
             }
         }
         return true;
+    }
+
+    public function showForm($ID, array $options = [])
+    {
+        if ((int)$ID === 0) {
+            // Root entity: can edit but cannot delete
+            $options['candel'] = false;
+        }
+
+        return parent::showForm($ID, $options);
     }
 
     /**
@@ -1880,7 +1906,6 @@ class Entity extends CommonTreeDropdown
             $this->fields['id'],
             'custom_css_code'
         );
-
         if (empty($custom_css_code)) {
             return '';
         }
@@ -2854,7 +2879,7 @@ class Entity extends CommonTreeDropdown
         if ($this->fields[$field] == self::CONFIG_PARENT) {
             $tid = self::getUsedConfig(str_replace('_id', '_strategy', $field), $this->getID(), $field, $default_value);
             if (!$tid) {
-                return self::inheritedValue(htmlspecialchars($empty_value), true, false);
+                return self::inheritedValue(htmlescape($empty_value), true, false);
             }
             if ($item->getFromDB($tid)) {
                 return self::inheritedValue($item->getLink(), true, false);
@@ -2902,6 +2927,7 @@ class Entity extends CommonTreeDropdown
      *
      * @param string $entity_string
      * @param string|null $title
+     *
      * @return string
      */
     public static function badgeCompletename(string $entity_string = "", ?string $title = null): string
@@ -2910,12 +2936,12 @@ class Entity extends CommonTreeDropdown
 
         // Construct HTML with special chars encoded.
         if ($title === null) {
-            $title = htmlspecialchars(implode(' > ', $names));
+            $title = htmlescape(implode(' > ', $names));
         }
         $breadcrumbs = implode(
             '<i class="fas fa-caret-right mx-1"></i>',
             array_map(
-                static fn (string $name) => '<span class="text-nowrap">' . htmlspecialchars($name) . '</span>',
+                static fn (string $name) => '<span class="text-nowrap">' . htmlescape($name) . '</span>',
                 $names
             )
         );
@@ -2951,17 +2977,17 @@ class Entity extends CommonTreeDropdown
         $names = explode(' > ', trim($entity->fields['completename']));
 
         // Construct HTML with special chars encoded.
-        $title       = htmlspecialchars(implode(' > ', $names));
+        $title       = htmlescape(implode(' > ', $names));
         $last_name   = array_pop($names);
         $breadcrumbs = implode(
             '<i class="fas fa-caret-right mx-1"></i>',
             array_map(
-                static fn (string $name) => '<span class="text-nowrap text-muted">' . htmlspecialchars($name) . '</span>',
+                static fn (string $name) => '<span class="text-nowrap text-muted">' . htmlescape($name) . '</span>',
                 $names
             )
         );
 
-        $last_url  = '<i class="fas fa-caret-right mx-1"></i>' . '<a href="' . $entity->getLinkURL() . '" title="' . $title . '">' . htmlspecialchars($last_name) . '</a>';
+        $last_url  = '<i class="fas fa-caret-right mx-1"></i>' . '<a href="' . $entity->getLinkURL() . '" title="' . $title . '">' . htmlescape($last_name) . '</a>';
 
         return '<span class="glpi-badge" title="' . $title . '">' . $breadcrumbs . $last_url . '</span>';
     }
@@ -3037,13 +3063,8 @@ class Entity extends CommonTreeDropdown
 
     public static function getEntitySelectorTree(): array
     {
-        /** @var array $CFG_GLPI */
-        global $CFG_GLPI;
-
-        $base_path = $CFG_GLPI['root_doc'] . "/front/central.php";
-        if (Session::getCurrentInterface() === 'helpdesk') {
-            $base_path = $CFG_GLPI["root_doc"] . "/front/helpdesk.public.php";
-        }
+        $token = Session::getNewCSRFToken();
+        $twig = TemplateRenderer::getInstance();
 
         $ancestors = getAncestorsOf('glpi_entities', $_SESSION['glpiactive_entity']);
 
@@ -3053,27 +3074,32 @@ class Entity extends CommonTreeDropdown
             $default_entity_id = $default_entity['id'];
             $entitytree = $default_entity['is_recursive'] ? self::getEntityTree($default_entity_id) : [$default_entity['id'] => $default_entity];
 
-            $adapt_tree = static function (&$entities) use (&$adapt_tree, $base_path) {
+            $adapt_tree = static function (&$entities) use (&$adapt_tree, $token, $twig) {
                 foreach ($entities as $entities_id => &$entity) {
                     $entity['key']   = $entities_id;
 
-                    $title = "<a href='$base_path?active_entity={$entities_id}'>{$entity['name']}</a>";
-                    $entity['title'] = $title;
-                    unset($entity['name']);
-
                     if (isset($entity['tree']) && count($entity['tree']) > 0) {
                         $entity['folder'] = true;
-
-                        $entity['title'] .= "<a href='$base_path?active_entity={$entities_id}&is_recursive=1'>
-            <i class='fas fa-angle-double-down ms-1' data-bs-toggle='tooltip' data-bs-placement='right' title='" . __('+ sub-entities') . "'></i>
-            </a>";
+                        $is_recursive = true;
 
                         $children = $adapt_tree($entity['tree']);
                         $entity['children'] = array_values($children);
+                    } else {
+                        $is_recursive = false;
                     }
 
-                    unset($entity['tree']);
+                    $entity['title'] = $twig->render('layout/parts/profile_selector_form.html.twig', [
+                        'id' => $entities_id,
+                        'name' => $entity['name'],
+                        'is_recursive' => $is_recursive,
+                        // To avoid generating one token per entity (which may
+                        // make us reach our token limit too fast), we reuse a
+                        // common one.
+                        'csrf_token' => $token,
+                    ]);
                 }
+
+                unset($entity);
 
                 return $entities;
             };

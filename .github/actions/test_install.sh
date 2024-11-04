@@ -4,6 +4,9 @@ set -e -u -x -o pipefail
 LOG_FILE="./tests/files/_log/install.log"
 mkdir -p $(dirname "$LOG_FILE")
 
+# Run the check requirements command to make sure it is working
+bin/console system:check_requirements
+
 # Execute install
 bin/console database:install \
   --ansi --no-interaction \
@@ -26,3 +29,6 @@ bin/console database:update --ansi --no-interaction | tee $LOG_FILE
 if [[ -z $(grep "No migration needed." $LOG_FILE) ]];
   then echo "database:update command FAILED" && exit 1;
 fi
+
+# Defines the base URL to match the default one used in web/e2e tests
+bin/console config:set url_base http://localhost:80

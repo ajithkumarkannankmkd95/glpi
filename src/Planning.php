@@ -45,6 +45,7 @@ use Sabre\VObject\Component\VTodo;
 use Sabre\VObject\Property\FlatText;
 use Sabre\VObject\Property\ICalendar\Recur;
 use Sabre\VObject\Reader;
+use Glpi\Features\PlanningEvent;
 
 /**
  * Planning Class
@@ -112,7 +113,7 @@ class Planning extends CommonGLPI
         $links = [];
 
         if (self::canView()) {
-            $title     = htmlspecialchars(self::getTypeName(Session::getPluralNumber()));
+            $title     = htmlescape(self::getTypeName(Session::getPluralNumber()));
             $planning  = "<i class='fa far fa-calendar-alt pointer' title='$title'>
                         <span class='sr-only'>$title</span>
                        </i>";
@@ -121,7 +122,7 @@ class Planning extends CommonGLPI
         }
 
         if (PlanningExternalEvent::canView()) {
-            $ext_title = htmlspecialchars(PlanningExternalEvent::getTypeName(Session::getPluralNumber()));
+            $ext_title = htmlescape(PlanningExternalEvent::getTypeName(Session::getPluralNumber()));
             $external  = "<i class='fa fas fa-calendar-week pointer' title='$ext_title'>
                         <span class='sr-only'>$ext_title</span>
                        </i>";
@@ -145,7 +146,7 @@ class Planning extends CommonGLPI
     {
         if (PlanningExternalEvent::canView()) {
             return [
-                'external' => [
+                PlanningEvent::class => [
                     'title' => PlanningExternalEvent::getTypeName(Session::getPluralNumber()),
                     'page'  => PlanningExternalEvent::getSearchURL(false),
                     'links' => [
@@ -226,7 +227,7 @@ class Planning extends CommonGLPI
      */
     public static function getStatusIcon($status): string
     {
-        $label = htmlspecialchars(self::getState($status), ENT_QUOTES);
+        $label = htmlescape(self::getState($status));
         if (empty($label)) {
             return '';
         }
@@ -371,7 +372,7 @@ JAVASCRIPT;
             Session::addMessageAfterRedirect(
                 sprintf(
                     __s('The user %1$s is busy at the selected timeframe.'),
-                    '<a href="' . htmlspecialchars($user::getFormURLWithID($users_id)) . '">' . htmlspecialchars($user->getName()) . '</a>'
+                    '<a href="' . htmlescape($user::getFormURLWithID($users_id)) . '">' . htmlescape($user->getName()) . '</a>'
                 ) . '<br/>' . $message,
                 false,
                 WARNING
@@ -1749,7 +1750,8 @@ TWIG, $twig_params);
                 // For list view, only display only the next occurence
                 // to avoid issues performances (range in list view can be 10 years long)
                 if ($param['view_name'] === "listFull") {
-                     $next_date = $rset->getNthOccurrenceAfter(new DateTime(), 1);
+                    /** @var DateTime $next_date */
+                    $next_date = $rset->getNthOccurrenceAfter(new DateTime(), 1);
                     if ($next_date) {
                         $new_event = array_merge($new_event, [
                             'start'    => $next_date->format('c'),
@@ -1837,6 +1839,7 @@ TWIG, $twig_params);
                     $_SESSION['glpi_plannings']['filters']['NotPlanned']['display']
                     && method_exists($params['planning_type'], 'populateNotPlanned')
                 ) {
+                    /** @var class-string $params['planning_type'] */
                     $not_planned = array_merge($not_planned, $params['planning_type']::populateNotPlanned($params));
                 }
             }
@@ -1960,7 +1963,7 @@ TWIG, $twig_params);
      * @param array $params must contains this keys :
      *  - items_id : integer to identify items
      *  - itemtype : string to identify items
-     *  - begin : planning start .
+     *  - start : planning start .
      *       (should be an ISO_8601 date, but could be anything wo can be parsed by strtotime)
      *  - end : planning end .
      *       (should be an ISO_8601 date, but could be anything wo can be parsed by strtotime)
@@ -1974,24 +1977,12 @@ TWIG, $twig_params);
             if (
                 $item->getFromDB($params['items_id'])
                 && empty($item->fields['is_deleted'])
+                && $item::canUpdate()
+                && $item->canUpdateItem()
             ) {
                 // item exists and is not in bin
 
                 $abort = false;
-
-                // we should not edit events from closed parent
-                if (!empty($item->fields['tickets_id'])) {
-                  // todo: to same checks for changes, problems, projects and maybe reminders and others depending on incoming itemtypes
-                    $ticket = new Ticket();
-
-                    if (
-                        !$ticket->getFromDB($item->fields['tickets_id'])
-                        || $ticket->fields['is_deleted']
-                        || $ticket->fields['status'] == CommonITILObject::CLOSED
-                    ) {
-                         $abort = true;
-                    }
-                }
 
                 // if event has rrule property, check if we need to create a clone instance
                 if (
@@ -2001,12 +1992,13 @@ TWIG, $twig_params);
                     if (
                         isset($params['move_instance'])
                         && filter_var($params['move_instance'], FILTER_VALIDATE_BOOLEAN)
+                        && method_exists($item, 'createInstanceClone')
                     ) {
-                         $item = $item->createInstanceClone(
-                             $item->fields['id'],
-                             $params['old_start']
-                         );
-                            $params['items_id'] = $item->fields['id'];
+                        $item = $item->createInstanceClone(
+                            $item->fields['id'],
+                            $params['old_start']
+                        );
+                        $params['items_id'] = $item->fields['id'];
                     }
                 }
 
@@ -2153,6 +2145,7 @@ TWIG, $twig_params);
             && $val['itemtype'] !== 'NotPlanned'
             && method_exists($val['itemtype'], "displayPlanningItem")
         ) {
+            /** @var class-string $val['itemtype'] */
             $html .= $val['itemtype']::displayPlanningItem($val, $who, $type, $complete);
         }
 

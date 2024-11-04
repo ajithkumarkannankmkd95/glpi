@@ -37,26 +37,24 @@
  * @since 0.84
  */
 
-/** @var $this \Glpi\Controller\LegacyFileLoadController */
+/** @var \Glpi\Controller\LegacyFileLoadController $this */
 $this->setAjax();
 
 // Send UTF8 Headers
 header("Content-Type: text/html; charset=UTF-8");
 Html::header_nocache();
 
-Session::checkLoginUser();
-
 if (isset($_POST['type'], $_POST['end'])) {
     echo "<table style='width: 90%'>";
     switch ($_POST['type']) {
         case 'day':
-            echo "<tr><td>" . __('End date') . '</td><td>';
+            echo "<tr><td>" . __s('End date') . '</td><td>';
             Html::showDateField('periodicity[end]', ['value' => $_POST['end']]);
             echo "</td></tr>";
             break;
 
         case 'week':
-            echo "<tr><td>" . __('End date') . '</td><td>';
+            echo "<tr><td>" . __s('End date') . '</td><td>';
             Html::showDateField('periodicity[end]', ['value' => $_POST['end']]);
             echo "</td></tr></table>";
             echo "<table class='tab_glpi'>";

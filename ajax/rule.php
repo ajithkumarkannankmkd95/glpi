@@ -33,15 +33,13 @@
  * ---------------------------------------------------------------------
  */
 
-/** @var $this \Glpi\Controller\LegacyFileLoadController */
+/** @var \Glpi\Controller\LegacyFileLoadController $this */
 $this->setAjax();
-
-Session::checkLoginUser();
 
 switch ($_REQUEST['action']) {
     case "move_rule":
-        if (is_subclass_of($_POST['collection_classname'], RuleCollection::getType())) {
-            $rule_collection = getItemForItemtype($_POST['collection_classname']);
+        $rule_collection = getItemForItemtype($_POST['collection_classname']);
+        if ($rule_collection instanceof RuleCollection) {
             $rule_collection->moveRule((int) $_POST['rule_id'], (int) $_POST['ref_id'], $_POST['sort_action']);
         }
         break;

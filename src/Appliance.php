@@ -67,6 +67,11 @@ class Appliance extends CommonDBTM
         ];
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['management', self::class];
+    }
+
     public static function getTypeName($nb = 0)
     {
         return _n('Appliance', 'Appliances', $nb);
@@ -500,7 +505,7 @@ class Appliance extends CommonDBTM
         array &$actions,
         $itemtype,
         $is_deleted = false,
-        CommonDBTM $checkitem = null
+        ?CommonDBTM $checkitem = null
     ) {
         if (in_array($itemtype, self::getTypes())) {
             if (self::canUpdate()) {
@@ -520,7 +525,6 @@ class Appliance extends CommonDBTM
                 Appliance::dropdown();
                 echo Html::submit(_x('button', 'Post'), ['name' => 'massiveaction']);
                 return true;
-            break;
         }
         return parent::showMassiveActionsSubForm($ma);
     }

@@ -36,6 +36,10 @@
 namespace Glpi\Form\Destination;
 
 use Glpi\Form\Destination\CommonITILField\RequestTypeField;
+use Glpi\Form\Destination\CommonITILField\SLATTOField;
+use Glpi\Form\Destination\CommonITILField\SLATTRField;
+use Glpi\Form\Destination\CommonITILField\OLATTOField;
+use Glpi\Form\Destination\CommonITILField\OLATTRField;
 use Override;
 use Ticket;
 
@@ -52,6 +56,10 @@ final class FormDestinationTicket extends AbstractCommonITILFormDestination
     {
         return array_merge(parent::getConfigurableFields(), [
             new RequestTypeField(),
+            new SLATTOField(),
+            new SLATTRField(),
+            new OLATTOField(),
+            new OLATTRField(),
         ]);
     }
 }

@@ -448,8 +448,8 @@ abstract class CommonITILObject_CommonITILObject extends CommonDBRelation
             $resolved_value['name'] = __('Duplicated by');
         }
         return !$with_icon
-            ? htmlspecialchars($resolved_value['name'])
-            : sprintf($icon_tag, htmlspecialchars($resolved_value['icon']), htmlspecialchars($resolved_value['name']));
+            ? htmlescape($resolved_value['name'])
+            : sprintf($icon_tag, htmlescape($resolved_value['icon']), htmlescape($resolved_value['name']));
     }
 
     /**
@@ -687,7 +687,7 @@ abstract class CommonITILObject_CommonITILObject extends CommonDBRelation
      * Normalize PARENT_OF/SON_OF relation.
      *
      * This method ensure to always use SON_OF relations for relation between 2 identical itemtypes, as it is
-     * a prerequisite for "Parent/Child" search options that cannot use conditionnal `linkfield`.
+     * a prerequisite for "Parent/Child" search options that cannot use conditional `linkfield`.
      *
      * @param array $input
      *

@@ -70,6 +70,11 @@ class NetworkName extends FQDNLabel
         return _n('Network name', 'Network names', $nb);
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['config', CommonDropdown::class, self::class];
+    }
+
     public function useDeletedToLockIfDynamic()
     {
         return false;
@@ -180,13 +185,14 @@ class NetworkName extends FQDNLabel
     public static function rawSearchOptionsToAdd(array &$tab, array $joinparams)
     {
         $tab[] = [
-            'id'                 => '126',
-            'table'              => 'glpi_ipaddresses',
-            'field'              => 'name',
-            'name'               => __('IP'),
-            'forcegroupby'       => true,
-            'massiveaction'      => false,
-            'joinparams'         => [
+            'id'                  => '126',
+            'table'               => 'glpi_ipaddresses',
+            'field'               => 'name',
+            'name'                => __('IP'),
+            'forcegroupby'        => true,
+            'searchequalsonfield' => true,
+            'massiveaction'       => false,
+            'joinparams'          => [
                 'jointype'  => 'mainitemtype_mainitem',
                 'condition' => ['NEWTABLE.is_deleted' => 0,
                     'NOT' => ['NEWTABLE.name' => '']
@@ -195,23 +201,23 @@ class NetworkName extends FQDNLabel
         ];
 
         $tab[] = [
-            'id'                 => '127',
-            'table'              => 'glpi_networknames',
-            'field'              => 'name',
-            'name'               => self::getTypeName(Session::getPluralNumber()),
-            'forcegroupby'       => true,
-            'massiveaction'      => false,
-            'joinparams'         => $joinparams
+            'id'                  => '127',
+            'table'               => 'glpi_networknames',
+            'field'               => 'name',
+            'name'                => self::getTypeName(Session::getPluralNumber()),
+            'forcegroupby'        => true,
+            'massiveaction'       => false,
+            'joinparams'          => $joinparams
         ];
 
         $tab[] = [
-            'id'                 => '128',
-            'table'              => 'glpi_networkaliases',
-            'field'              => 'name',
-            'name'               => NetworkAlias::getTypeName(Session::getPluralNumber()),
-            'forcegroupby'       => true,
-            'massiveaction'      => false,
-            'joinparams'         => [
+            'id'                  => '128',
+            'table'               => 'glpi_networkaliases',
+            'field'               => 'name',
+            'name'                => NetworkAlias::getTypeName(Session::getPluralNumber()),
+            'forcegroupby'        => true,
+            'massiveaction'       => false,
+            'joinparams'          => [
                 'jointype'   => 'child',
                 'beforejoin' => [
                     'table'      => 'glpi_networknames',
@@ -368,7 +374,6 @@ class NetworkName extends FQDNLabel
     public static function showFormForNetworkPort($networkPortID)
     {
         /**
-         * @var array $CFG_GLPI
          * @var \DBmysql $DB
          */
         global $DB;
@@ -428,8 +433,8 @@ TWIG, ['alert' => __("Several network names available! Go to the tab 'Network Na
     public static function getHTMLTableHeader(
         $itemtype,
         HTMLTableBase $base,
-        HTMLTableSuperHeader $super = null,
-        HTMLTableHeader $father = null,
+        ?HTMLTableSuperHeader $super = null,
+        ?HTMLTableHeader $father = null,
         array $options = []
     ) {
 
@@ -447,9 +452,9 @@ TWIG, ['alert' => __("Several network names available! Go to the tab 'Network Na
             $delete_all_column->setHTMLClass('center');
         }
         if (!isset($options['dont_display'][$column_name])) {
-            $content = htmlspecialchars(self::getTypeName());
+            $content = htmlescape(self::getTypeName());
             if (isset($options['column_links'][$column_name])) {
-                $content = '<a href="' . htmlspecialchars($options['column_links'][$column_name]) . '">'
+                $content = '<a href="' . htmlescape($options['column_links'][$column_name]) . '">'
                     . $content
                     . '</a>';
             }
@@ -479,9 +484,9 @@ TWIG, ['alert' => __("Several network names available! Go to the tab 'Network Na
      * @since 0.84
      */
     public static function getHTMLTableCellsForItem(
-        HTMLTableRow $row = null,
-        CommonDBTM $item = null,
-        HTMLTableCell $father = null,
+        ?HTMLTableRow $row = null,
+        ?CommonDBTM $item = null,
+        ?HTMLTableCell $father = null,
         array $options = []
     ) {
         /** @var \DBmysql $DB */
@@ -615,10 +620,10 @@ TWIG, ['alert' => __("Several network names available! Go to the tab 'Network Na
                 if (empty($internetName)) {
                     $internetName = "(" . $line["id"] . ")";
                 }
-                $content  = htmlspecialchars($internetName);
+                $content  = htmlescape($internetName);
                 if (Session::haveRight('internet', READ)) {
                     $content  = '<a href="' . $address->getLinkURL() . '">'
-                        . htmlspecialchars($internetName)
+                        . htmlescape($internetName)
                         . '</a>';
                 }
 
@@ -751,7 +756,7 @@ TWIG, $twig_params);
         $table                                     = new HTMLTableMain();
         $column                                    = $table->addHeader(
             'Internet',
-            htmlspecialchars(self::getTypeName(Session::getPluralNumber()))
+            htmlescape(self::getTypeName(Session::getPluralNumber()))
         );
         $t_group                                   = $table->createGroup('Main', '');
 
@@ -874,7 +879,8 @@ TWIG, $twig_params);
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
         if (
-            $item->getID()
+            ($item instanceof CommonDBTM)
+            && $item->getID()
             && $item->can($item->getField('id'), READ)
         ) {
             $nb = 0;

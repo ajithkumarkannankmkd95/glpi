@@ -33,9 +33,9 @@
  * ---------------------------------------------------------------------
  */
 
-Html::header_nocache();
+use Glpi\Exception\Http\BadRequestHttpException;
 
-Session::checkLoginUser();
+Html::header_nocache();
 
 $setupdisplay = new DisplayPreference();
 
@@ -53,9 +53,14 @@ if (isset($_POST["activate"])) {
     }
 } else if (isset($_POST['action']) && $_POST['action'] === 'update_order') {
     if (!isset($_POST['itemtype'], $_POST['users_id'], $_POST['opts'])) {
-        die(400);
+        throw new BadRequestHttpException();
     }
-    $setupdisplay->updateOrder($_POST['itemtype'], $_POST['users_id'], $_POST['opts']);
+    $setupdisplay->updateOrder(
+        $_POST['itemtype'],
+        $_POST['users_id'],
+        $_POST['opts'],
+        $_POST['interface'] ?? 'central'
+    );
 } else {
-    die(400);
+    throw new BadRequestHttpException();
 }

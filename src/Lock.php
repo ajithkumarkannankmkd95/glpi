@@ -278,7 +278,7 @@ TWIG;
                 if ($default_items_id !== null && is_a($row['itemtype'], CommonDBRelation::class, true)) {
                     $related_object = new $default_itemtype();
                     $related_object->getFromDB($object->fields[$default_items_id]);
-                    $name = htmlspecialchars($related_object->getName());
+                    $name = htmlescape($related_object->getName());
                     $default_object_link = "<a href='" . $object->getLinkURL() . "'" . $name . ">" . $name . "</a>";
                 }
 
@@ -391,7 +391,7 @@ TWIG, $twig_params);
             ];
 
             foreach ($results as $result) {
-                /** @var CommonDBTM $asset */
+                /** @var CommonDBTM $peripheral */
                 $peripheral = getItemForItemtype($result['itemtype_peripheral']);
                 if ($peripheral === false || $peripheral->getFromDB($result['items_id_peripheral']) === false) {
                     // ignore orphan data
@@ -400,7 +400,7 @@ TWIG, $twig_params);
                 $relation_item = new Asset_PeripheralAsset();
                 $show_checkbox = $relation_item->can($result['id'], UPDATE) || $relation_item->can($result['id'], PURGE);
                 $subtable['entries'][] = [
-                    'chk' => $show_checkbox ? "<input type='checkbox' name='Computer_Item[{$result['id']}]'>" : '',
+                    'chk' => $show_checkbox ? "<input type='checkbox' name='Glpi\\Asset\\Asset_PeripheralAsset[{$result['id']}]'>" : '',
                     'type' => $peripheral::getTypeName(),
                     'item' => $peripheral->getLink(),
                     'serial' => $peripheral->fields['serial'],
@@ -489,22 +489,22 @@ TWIG, $twig_params);
                 $item = new $itemtype();
                 if ($item->can($link_item, READ)) {
                     $url  = "<a href='" . $item->getFormURLWithID($link_item) . "'>";
-                    $url .= htmlspecialchars($item->fields["name"]) . "</a>";
+                    $url .= htmlescape($item->fields["name"]) . "</a>";
 
-                    $tooltip = "<table><tr><td>" . __s('Name') . "</td><td>" . htmlspecialchars($item->fields['name']) .
+                    $tooltip = "<table><tr><td>" . __s('Name') . "</td><td>" . htmlescape($item->fields['name']) .
                         '</td></tr>';
                     if (isset($item->fields['serial'])) {
-                        $tooltip .= "<tr><td>" . __s('Serial number') . "</td><td>" . htmlspecialchars($item->fields['serial']) .
+                        $tooltip .= "<tr><td>" . __s('Serial number') . "</td><td>" . htmlescape($item->fields['serial']) .
                             '</td></tr>';
                     }
                     if (isset($item->fields['comment'])) {
-                        $tooltip .= "<tr><td>" . __s('Comments') . "</td><td>" . htmlspecialchars($item->fields['comment']) .
+                        $tooltip .= "<tr><td>" . __s('Comments') . "</td><td>" . htmlescape($item->fields['comment']) .
                             '</td></tr></table>';
                     }
 
                     $url .= "&nbsp; " . Html::showToolTip($tooltip, ['display' => false]);
                 } else {
-                    $url = htmlspecialchars($item->fields['name']);
+                    $url = htmlescape($item->fields['name']);
                 }
             }
             $subtable['entries'][] = [
@@ -868,7 +868,7 @@ TWIG, $twig_params);
                     $show_checkbox = $type_item->can($data['id'], UPDATE) || $type_item->can($data['id'], PURGE);
                     $object_item_type = new $type();
                     $object_item_type->getFromDB($data['id']);
-                    $object_name = htmlspecialchars($data['name']);
+                    $object_name = htmlescape($data['name']);
                     $object_link = "<a href='" . $object_item_type->getLinkURL() . "'>{$object_name}</a>";
 
                     $subtable['entries'][] = [
@@ -1049,7 +1049,11 @@ TWIG);
 
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
-        if ($item->isDynamic() && $item->can($item->fields['id'], UPDATE)) {
+        if (
+            ($item instanceof CommonDBTM)
+            && $item->isDynamic()
+            && $item->can($item->fields['id'], UPDATE)
+        ) {
             return self::createTabEntry(self::getTypeName(Session::getPluralNumber()), 0, $item::getType());
         }
         return '';
@@ -1057,7 +1061,12 @@ TWIG);
 
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
-        if ($item->isDynamic() && $item->can($item->fields['id'], UPDATE)) {
+
+        if (
+            ($item instanceof CommonDBTM)
+            && $item->isDynamic()
+            && $item->can($item->fields['id'], UPDATE)
+        ) {
             self::showForItem($item);
         }
         return true;
@@ -1245,7 +1254,7 @@ TWIG);
         array &$actions,
         $itemtype,
         $is_deleted = false,
-        CommonDBTM $checkitem = null
+        ?CommonDBTM $checkitem = null
     ) {
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
@@ -1280,7 +1289,7 @@ TWIG);
                 ];
 
                 echo __s('Select the type of the item that must be unlock');
-                echo "<br><br>\n";
+                echo "<br><br>";
 
                 Dropdown::showFromArray(
                     'attached_item',
@@ -1293,14 +1302,13 @@ TWIG);
 
                 echo "<br><br>" . Html::submit(_x('button', 'Post'), ['name' => 'massiveaction']);
                 return true;
-            break;
             case 'unlock_fields':
                 $related_itemtype = $ma->getItemtype(false);
                 $lockedfield = new Lockedfield();
                 $fields = $lockedfield->getFieldsToLock($related_itemtype);
 
-                echo __('Select fields of the item that must be unlock');
-                echo "<br><br>\n";
+                echo __s('Select fields of the item that must be unlock');
+                echo "<br><br>";
                 Dropdown::showFromArray(
                     'attached_fields',
                     $fields,
@@ -1311,7 +1319,6 @@ TWIG);
                 );
                 echo "<br><br>" . Html::submit(_x('button', 'Post'), ['name' => 'massiveaction']);
                 return true;
-            break;
         }
         return false;
     }

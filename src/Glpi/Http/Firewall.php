@@ -8,7 +8,6 @@
  * http://glpi-project.org
  *
  * @copyright 2015-2024 Teclib' and contributors.
- * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
  * ---------------------------------------------------------------------
@@ -36,11 +35,12 @@
 namespace Glpi\Http;
 
 use Session;
+use Symfony\Component\HttpFoundation\Request;
 
 /**
  * @since 10.0.10
  */
-final class Firewall implements FirewallInterface
+final class Firewall
 {
     /**
      * Nothing to check. Entrypoint accepts anonymous access.
@@ -68,26 +68,17 @@ final class Firewall implements FirewallInterface
     public const STRATEGY_FAQ_ACCESS = 'faq_access';
 
     /**
-     * Security strategy to apply by default on core ajax/front scripts.
+     * Fallback strategy to apply (except for legacy scripts).
      */
-    private const STRATEGY_DEFAULT_FOR_CORE = self::STRATEGY_AUTHENTICATED;
+    private const FALLBACK_STRATEGY = self::STRATEGY_CENTRAL_ACCESS;
 
     /**
-     * Security strategy to apply by default on plugin ajax/front scripts.
-     *
-     * @TODO In GLPI 11.0, raise default level to `self::STRATEGY_AUTHENTICATED`.
+     * Fallback strategy to apply to legacy scripts.
      */
-    private const STRATEGY_DEFAULT_FOR_PLUGINS = self::STRATEGY_NO_CHECK;
-
-    /**
-     * GLPI URLs path prefix.
-     * @var string
-     */
-    private string $path_prefix;
+    private const FALLBACK_STRATEGY_FOR_LEGACY_SCRIPTS = self::STRATEGY_AUTHENTICATED;
 
     /**
      * GLPI root directory.
-     * @var string
      */
     private string $root_dir;
 
@@ -98,34 +89,54 @@ final class Firewall implements FirewallInterface
     private array $plugins_dirs;
 
     /**
-     * @param string  $path_prefix   GLPI URLs path prefix
-     * @param ?string $root_dir      GLPI root directory on filesystem
-     * @param ?array  $plugins_dirs  GLPI plugins root directories on filesystem
+     * Registered plugins strategies for legacy scripts.
+     *
+     * @phpstan-var array<string, array<string, self::STRATEGY_*>>
      */
-    public function __construct(string $path_prefix, ?string $root_dir = null, ?array $plugins_dirs = null)
+    private static array $plugins_legacy_scripts_strategies = [];
+
+    /**
+     * @param ?string $root_dir             GLPI root directory on filesystem
+     * @param ?array  $plugins_dirs         GLPI plugins root directories on filesystem
+     */
+    public function __construct(?string $root_dir = null, ?array $plugins_dirs = null)
     {
-        $this->path_prefix = $path_prefix;
         $this->root_dir = $root_dir ?? \GLPI_ROOT;
         $this->plugins_dirs = $plugins_dirs ?? \PLUGINS_DIRECTORIES;
     }
 
-    public static function createDefault(): self
-    {
-        /**
-         * @var array $CFG_GLPI
-         */
-        global $CFG_GLPI;
-
-        return new Firewall($CFG_GLPI['root_doc']);
+    /**
+     * Add a security strategy for specific plugin legacy scripts.
+     *
+     * @param string $plugin_key    The plugin key.
+     * @param string $pattern       The resource pattern, relative to the plugin root URI (e.g. `#^/front/api.php/#`).
+     * @param string $strategy      The strategy to apply.
+     *
+     * @phpstan-param self::STRATEGY_* $strategy
+     */
+    public static function addPluginStrategyForLegacyScripts(
+        string $plugin_key,
+        string $pattern,
+        string $strategy
+    ): void {
+        self::$plugins_legacy_scripts_strategies[$plugin_key][$pattern] = $strategy;
     }
 
-    public function applyStrategy(string $path, ?string $strategy): void
+    /**
+     * Reset strategies for all plugins.
+     */
+    public static function resetPluginsStrategies(): void
     {
-        if ($strategy === null) {
-            // If no strategy is defined for the route, use the fallback value.
-            $strategy = $this->computeFallbackStrategy($path);
-        }
+        self::$plugins_legacy_scripts_strategies = [];
+    }
 
+    /**
+     * Apply the firewall strategy.
+     *
+     * @phpstan-param self::STRATEGY_* $strategy
+     */
+    public function applyStrategy(string $strategy): void
+    {
         switch ($strategy) {
             case self::STRATEGY_AUTHENTICATED:
                 Session::checkLoginUser();
@@ -143,80 +154,49 @@ final class Firewall implements FirewallInterface
                 // nothing to do
                 break;
             default:
-                trigger_error(sprintf('Invalid `%s` strategy.', $strategy), E_USER_WARNING);
-                break;
+                throw new \LogicException(sprintf('Invalid firewall strategy `%s`.', $strategy));
         }
     }
 
     /**
      * Compute the fallback strategy for given path.
-     *
-     * @param string $path  URL path
-     * @return string
      */
-    private function computeFallbackStrategy(string $path): string
+    public function computeFallbackStrategy(Request $request): string
     {
-        if ($strategy = $this->computeSpecificStrategyForLegacyPaths($path)) {
-            return $strategy;
-        }
+        $unprefixed_path = preg_replace(
+            '/^' . preg_quote($request->getBasePath(), '/') . '/',
+            '',
+            $request->getPathInfo()
+        );
 
-        // Check if entrypoint is a legacy GLPI core ajax/front script.
-        if (
-            str_starts_with($path, $this->path_prefix . '/ajax/')
-            || str_starts_with($path, $this->path_prefix . '/front/')
-        ) {
-            return self::STRATEGY_DEFAULT_FOR_CORE;
-        }
-
-        // Check if entrypoint is a legacy plugin ajax/front script.
-        foreach ($this->plugins_dirs as $plugins_dir) {
-            $relative_path = preg_replace(
-                '/^' . preg_quote($this->normalizePath($this->root_dir), '/') . '/',
-                '',
-                $this->normalizePath($plugins_dir)
+        $path_matches = [];
+        $plugin_path_pattern = '#^/(plugins|marketplace)/(?<plugin_key>[^/]+)(?<plugin_resource>/.+)$#';
+        if (preg_match($plugin_path_pattern, $unprefixed_path, $path_matches) === 1) {
+            return $this->computeFallbackStrategyForPlugin(
+                $path_matches['plugin_key'],
+                $path_matches['plugin_resource']
             );
-
-            if (preg_match('/^' . preg_quote($this->path_prefix . $relative_path, '/') . '\/[^\/]+\/(ajax|front)\/' . '/', $path) === 1) {
-                // Entrypoint is a plugin ajax/front script.
-                return self::STRATEGY_DEFAULT_FOR_PLUGINS;
-            }
         }
 
-        // No default security strategy for other entrypoints.
-        return self::STRATEGY_NO_CHECK;
+        return $this->computeFallbackStrategyForCore($unprefixed_path);
     }
 
     /**
-     * Normalize a path, to make comparisons and relative paths computation easier.
-     *
-     * @param string $path
-     * @return string
+     * Compute the fallback strategy for GLPI resources.
      */
-    private function normalizePath(string $path): string
+    private function computeFallbackStrategyForCore(string $path): string
     {
-        $realpath = realpath($path);
-        if ($realpath !== false) {
-            // Use realpath if possible.
-            // As `realpath()` will return `false` on streams, we cannot always use it, or we will not be able to do unit tests on this method.
-            $path = $realpath;
+        if (!file_exists($this->root_dir . $path)) {
+            // Modern controllers
+            return self::FALLBACK_STRATEGY;
         }
 
-        // Normalize all directory separators to `/`.
-        $path = preg_replace('/\\\/', '/', $path);
-        return $path;
-    }
-
-    /**
-     * Compute the specific strategy for legacy `/ajax` and `/front` paths.
-     */
-    private function computeSpecificStrategyForLegacyPaths(string $path): ?string
-    {
-        if (isset($_GET["embed"], $_GET["dashboard"]) && str_starts_with($path, $this->path_prefix . '/front/central.php')) {
+        if (isset($_GET["embed"], $_GET["dashboard"]) && str_starts_with($path, '/front/central.php')) {
             // Allow anonymous access for embed dashboards.
             return 'no_check';
         }
 
-        if (isset($_GET["token"]) && str_starts_with($path, $this->path_prefix . '/front/planning.php')) {
+        if (isset($_GET["token"]) && str_starts_with($path, '/front/planning.php')) {
             // Token based access for ical/webcal access can be made anonymously.
             return 'no_check';
         }
@@ -231,23 +211,56 @@ final class Firewall implements FirewallInterface
             '/front/cron.php' => self::STRATEGY_NO_CHECK, // in GLPI mode, cronjob can also be triggered from public pages
             '/front/css.php' => self::STRATEGY_NO_CHECK, // CSS must be accessible also on public pages
             '/front/document.send.php' => self::STRATEGY_NO_CHECK, // may allow unauthenticated access, for public FAQ images
-            '/front/form/form_renderer.php' => self::STRATEGY_NO_CHECK, // Since forms may be available to unauthenticated users, we trust the `canAnswerForm` method to do the required session checks.
-            '/front/helpdesk.php' => self::STRATEGY_NO_CHECK, // Anonymous access may be allowed by configuration.
             '/front/inventory.php' => self::STRATEGY_NO_CHECK, // allow anonymous requests from inventory agent
             '/front/locale.php' => self::STRATEGY_NO_CHECK, // locales must be accessible also on public pages
             '/front/login.php' => self::STRATEGY_NO_CHECK,
             '/front/logout.php' => self::STRATEGY_NO_CHECK,
             '/front/lostpassword.php' => self::STRATEGY_NO_CHECK,
-            '/front/tracking.injector.php' => self::STRATEGY_NO_CHECK, // Anonymous access may be allowed by configuration.
             '/front/updatepassword.php' => self::STRATEGY_NO_CHECK,
+            '/install/' => self::STRATEGY_NO_CHECK, // No check during install/update
         ];
 
         foreach ($paths as $checkPath => $strategy) {
-            if (\str_starts_with($path, $this->path_prefix . $checkPath)) {
+            if (\str_starts_with($path, $checkPath)) {
                 return $strategy;
             }
         }
 
-        return null;
+        return self::FALLBACK_STRATEGY_FOR_LEGACY_SCRIPTS;
+    }
+
+    /**
+     * Compute the fallback strategy for plugins resources.
+     */
+    private function computeFallbackStrategyForPlugin(string $plugin_key, string $plugin_resource): string
+    {
+        // Check if the file exists to apply the strategies related to legacyy scripts
+        foreach ($this->plugins_dirs as $plugin_dir) {
+            $expected_filenames = [
+                $plugin_dir . '/' . $plugin_key . $plugin_resource,
+            ];
+            $resource_matches = [];
+            if (\preg_match('#^(?<filename>.+\.php)(/.*)$#', $plugin_resource, $resource_matches)) {
+                // /front/api.php/path/to/endpoint -> /front/api.php
+                $expected_filenames[] = $plugin_dir . '/' . $plugin_key . $resource_matches['filename'];
+            }
+
+            foreach ($expected_filenames as $expected_filename) {
+                if (\file_exists($expected_filename)) {
+                    // Try to match a registered strategy
+                    $strategies = self::$plugins_legacy_scripts_strategies[$plugin_key] ?? [];
+                    foreach ($strategies as $pattern => $strategy) {
+                        if (preg_match($pattern, $plugin_resource) === 1) {
+                            return $strategy;
+                        }
+                    }
+
+                    return self::FALLBACK_STRATEGY_FOR_LEGACY_SCRIPTS;
+                }
+            }
+        }
+
+        // Modern controllers
+        return self::FALLBACK_STRATEGY;
     }
 }

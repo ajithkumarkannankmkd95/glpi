@@ -38,11 +38,13 @@ namespace Glpi\Agent\Communication;
 use DOMDocument;
 use DOMElement;
 use Glpi\Agent\Communication\Headers\Common;
+use Glpi\Inventory\Conf;
 use Glpi\Application\ErrorHandler;
 use Glpi\Http\Request;
 use Glpi\OAuth\Server;
 use League\OAuth2\Server\Exception\OAuthServerException;
 use Toolbox;
+use GLPIKey;
 
 /**
  * Handle agent requests
@@ -175,18 +177,14 @@ abstract class AbstractRequest
             case self::INVENT_QUERY:
             case self::INVENT_ACTION:
                 return __("Inventory");
-                break;
             case self::OLD_SNMP_QUERY:
             case self::SNMP_QUERY:
             case self::NETINV_ACTION:
                 return __("Network inventory (SNMP)");
-                break;
             case self::NETDISCOVERY_ACTION:
                 return __("Network discovery (SNMP)");
-                break;
             default:
                 return $internalModule ?? '';
-                break;
         }
     }
 
@@ -211,7 +209,7 @@ abstract class AbstractRequest
     public function handleRequest($data): bool
     {
         $auth_required = \Config::getConfigurationValue('inventory', 'auth_required');
-        if ($auth_required === 'client_credentials') {
+        if ($auth_required === Conf::CLIENT_CREDENTIALS) {
             $request = new Request('POST', $_SERVER['REQUEST_URI'], $this->headers->getHeaders());
             try {
                 $client = Server::validateAccessToken($request);
@@ -224,6 +222,37 @@ abstract class AbstractRequest
                 $this->setMode(self::JSON_MODE);
                 $this->addError('Authorization header required to send an inventory', 401);
                 return false;
+            }
+        }
+
+        if ($auth_required === Conf::BASIC_AUTH) {
+            $authorization_header = $this->headers->getHeader('Authorization');
+            if (is_null($authorization_header)) {
+                $this->setMode(self::JSON_MODE);
+                $this->headers->setHeader("www-authenticate", 'Basic realm="basic"');
+                $this->addError('Authorization header required to send an inventory', 401);
+                return false;
+            } else {
+                $allowed = false;
+                // if Authorization start with 'Basic'
+                if (preg_match('/^Basic\s+(.*)$/i', $authorization_header, $matches)) {
+                    $inventory_login = \Config::getConfigurationValue('inventory', 'basic_auth_login');
+                    $inventory_password = (new GLPIKey())
+                        ->decrypt(\Config::getConfigurationValue('inventory', 'basic_auth_password'));
+                    $agent_credential = base64_decode($matches[1]);
+                    list($agent_login, $agent_password) = explode(':', $agent_credential, 2);
+                    if (
+                        $inventory_login == $agent_login &&
+                        $inventory_password == $agent_password
+                    ) {
+                        $allowed = true;
+                    }
+                }
+                if (!$allowed) {
+                    $this->setMode(self::JSON_MODE);
+                    $this->addError('Access denied. Wrong login or password for basic authentication.', 401);
+                    return false;
+                }
             }
         }
 
@@ -393,15 +422,14 @@ abstract class AbstractRequest
         }
         $this->http_response_code = $code;
         if (!empty($message)) {
+            $message = mb_strlen($message, 'UTF-8') < 250 ? $message : mb_substr($message, 0, 250, 'UTF-8');
             if ($this->mode === self::JSON_MODE) {
                 $this->addToResponse([
                     'status' => 'error',
-                    'message' => \Html::resume_text($message, 250),
+                    'message' => $message,
                     'expiration' => self::DEFAULT_FREQUENCY
                 ]);
             } else {
-                $message = \Html::resume_text($message, 250);
-
                 $this->addToResponse([
                     'ERROR' => [
                         'content'    => $message,

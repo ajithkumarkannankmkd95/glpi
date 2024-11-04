@@ -33,6 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Exception\Http\BadRequestHttpException;
+
 header("Content-Type: text/html; charset=UTF-8");
 Html::header_nocache();
 
@@ -45,6 +47,8 @@ switch ($_REQUEST['action']) {
             'as_map'             => 0,
             'showmassiveactions' => true,
             'criteria'           => $_REQUEST['criteria'],
+            'sort'               => $_REQUEST['sort'] ?? [],
+            'order'              => $_REQUEST['order'] ?? [],
             'unpublished'        => $_REQUEST['unpublished'],
         ];
 
@@ -63,15 +67,16 @@ switch ($_REQUEST['action']) {
             }
         }
 
-        $params['criteria'][] = [
+        $_SESSION['treebrowse'][$itemtype] = [
             'link'   => "AND",
             'field'  => $field,
             'searchtype'   => "equals",
             'virtual'      => true,
             'value'  => ($_REQUEST['cat_id'] > 0) ? $_REQUEST['cat_id'] : 0,
         ];
+        $params['criteria'][] = $_SESSION['treebrowse'][$itemtype];
         Search::showList($itemtype, $params);
         return;
 }
-http_response_code(400);
-return;
+
+throw new BadRequestHttpException();

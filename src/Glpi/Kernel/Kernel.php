@@ -34,17 +34,23 @@
 
 namespace Glpi\Kernel;
 
+use GLPI;
 use Glpi\Application\ConfigurationConstants;
 use Glpi\Config\ConfigProviderConsoleExclusiveInterface;
 use Glpi\Config\ConfigProviderWithRequestInterface;
 use Glpi\Config\LegacyConfigProviders;
-use Symfony\Bundle\TwigBundle\TwigBundle;
-use Symfony\Bundle\WebProfilerBundle\WebProfilerBundle;
-use Symfony\Component\HttpKernel\Kernel as BaseKernel;
-use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
-use Symfony\Component\Routing\Loader\Configurator\RoutingConfigurator;
+use Glpi\Http\PluginsRouterListener;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
+use Symfony\Bundle\TwigBundle\TwigBundle;
+use Symfony\Bundle\WebProfilerBundle\WebProfilerBundle;
+use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Event\ExceptionEvent;
+use Symfony\Component\HttpKernel\Kernel as BaseKernel;
+use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Component\Routing\Loader\Configurator\RoutingConfigurator;
 
 final class Kernel extends BaseKernel
 {
@@ -52,22 +58,23 @@ final class Kernel extends BaseKernel
 
     public function __construct(?string $env = null)
     {
-        if ($env !== null) {
-            define('GLPI_ENVIRONMENT_TYPE', $env);
-        }
-
         // Initialize configuration constants.
         // It must be done after the autoload inclusion that requires some constants to be defined (e.g. GLPI_VERSION).
         // It must be done before the Kernel boot as some of the define constants must be defined during the boot sequence.
-        (new ConfigurationConstants($this->getProjectDir()))->computeConstants();
+        (new ConfigurationConstants($this->getProjectDir()))->computeConstants($env);
 
         // TODO: refactor the GLPI class.
-        $glpi = (new \GLPI());
+        $glpi = (new GLPI());
         $glpi->initLogger();
         $glpi->initErrorHandler();
 
         $env = GLPI_ENVIRONMENT_TYPE;
-        parent::__construct($env, $env === 'development');
+        parent::__construct(
+            $env,
+            // `debug: true` will ensure that cache is recompiled everytime a corresponding resource is updated.
+            // Reserved for dev/test environments as it consumes many disk I/O.
+            debug: in_array($env, [GLPI::ENV_DEVELOPMENT, GLPI::ENV_TESTING], true)
+        );
     }
 
     public function __destruct()
@@ -137,6 +144,7 @@ final class Kernel extends BaseKernel
 
         $container->import($projectDir . '/dependency_injection/services.php', 'php');
         $container->import($projectDir . '/dependency_injection/legacyConfigProviders.php', 'php');
+        $container->import($projectDir . '/dependency_injection/framework.php', 'php');
         $container->import($projectDir . '/dependency_injection/web_profiler.php', 'php');
     }
 
@@ -149,6 +157,13 @@ final class Kernel extends BaseKernel
         if (\is_file($path = $this->getProjectDir() . '/routes/' . $this->environment . '.php')) {
             (require $path)($routes->withPath($path), $this);
         }
+
+        // Plugin-specific routes
+        $routes->add(PluginsRouterListener::ROUTE_NAME, '/plugins/{plugin_name}/{path_rest}')
+            ->requirements([
+                'plugin_name' => '^[a-zA-Z0-9_-]+$',
+                'path_rest' => '.*',
+            ]);
     }
 
     private function triggerGlobalsDeprecation(): void
@@ -221,6 +236,34 @@ final class Kernel extends BaseKernel
                 'The global `$dont_check_maintenance_mode` variable has no effect anymore.',
                 E_USER_WARNING
             );
+        }
+    }
+
+    /**
+     * Send the response and catch any exception that may occurs to forward it to the request error handling.
+     *
+     * It permits to correctly handle errors that may be thrown during the response sending. This will mainly
+     * occurs when handling the GLPI legacy scripts using a streamed response, but may also rarely occurs
+     * in other contexts.
+     *
+     * @param Request $request
+     * @param Response $response
+     */
+    public function sendResponse(Request $request, Response $response): void
+    {
+        try {
+            $response->send();
+        } catch (\Throwable $exception) {
+            $event = new ExceptionEvent($this, $request, self::MAIN_REQUEST, $exception);
+
+            $dispatcher = $this->container->get('event_dispatcher');
+            $dispatcher->dispatch($event, KernelEvents::EXCEPTION);
+
+            if ($event->hasResponse()) {
+                $event->getResponse()->send();
+            } else {
+                throw $exception;
+            }
         }
     }
 }

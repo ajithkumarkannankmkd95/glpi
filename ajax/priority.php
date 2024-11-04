@@ -35,8 +35,6 @@
 
 Html::header_nocache();
 
-Session::checkLoginUser();
-
 if (
     isset($_REQUEST["urgency"])
     && isset($_REQUEST["impact"])
@@ -56,10 +54,10 @@ if (
     } elseif ($_REQUEST["priority"]) {
         // Send UTF8 Headers
         header("Content-Type: text/html; charset=UTF-8");
-        echo "<script type='text/javascript' >\n";
+        echo "<script type='text/javascript' >";
         echo Html::jsSetDropdownValue($_REQUEST["priority"], $priority);
-        echo "\n</script>";
+        echo "</script>";
     } else {
-        echo Ticket::getPriorityName($priority);
+        echo htmlescape(Ticket::getPriorityName($priority));
     }
 }

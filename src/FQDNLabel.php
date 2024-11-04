@@ -120,7 +120,7 @@ abstract class FQDNLabel extends CommonDBChild
 
            // Before adding a name, we must unsure its is valid : it conforms to RFC
             if (!self::checkFQDNLabel($input['name'])) {
-                Session::addMessageAfterRedirect(htmlspecialchars(sprintf(
+                Session::addMessageAfterRedirect(htmlescape(sprintf(
                     __('Invalid internet name: %s'),
                     $input['name']
                 )), false, ERROR);
@@ -260,7 +260,10 @@ abstract class FQDNLabel extends CommonDBChild
         }
 
         foreach (self::getIDsByLabelAndFQDNID($label, $fqdns_id, $wildcard_search) as $class => $IDs) {
-            if ($FQDNlabel = getItemForItemtype($class)) {
+            if (
+                ($FQDNlabel = getItemForItemtype($class))
+                && ($FQDNlabel instanceof CommonDBChild)
+            ) {
                 foreach ($IDs as $ID) {
                     if ($FQDNlabel->getFromDB($ID)) {
                         $FQNDs_with_Items[] = array_merge(
@@ -269,6 +272,11 @@ abstract class FQDNLabel extends CommonDBChild
                         );
                     }
                 }
+            } else {
+                trigger_error(
+                    sprintf('%s is not a valid item type', $class),
+                    E_USER_WARNING
+                );
             }
         }
 

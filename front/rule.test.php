@@ -33,6 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Exception\Http\BadRequestHttpException;
+
 Session::checkCentralAccess();
 
 if (isset($_POST["sub_type"])) {
@@ -51,8 +53,9 @@ if (isset($_POST["rules_id"])) {
     $rules_id = 0;
 }
 
+/** @var Rule $rule */
 if (!$rule = getItemForItemtype($sub_type)) {
-    exit;
+    throw new BadRequestHttpException();
 }
 $rule->checkGlobal(READ);
 

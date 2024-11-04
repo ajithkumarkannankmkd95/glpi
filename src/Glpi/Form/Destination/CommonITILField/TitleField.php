@@ -48,12 +48,6 @@ use Override;
 class TitleField extends AbstractConfigField
 {
     #[Override]
-    public function getKey(): string
-    {
-        return 'title';
-    }
-
-    #[Override]
     public function getLabel(): string
     {
         return __("Title");
@@ -148,9 +142,9 @@ TWIG;
     #[Override]
     public function prepareInput(array $input): array
     {
-        if (isset($input['title']) && isset($input['title']['value'])) {
+        if (isset($input[$this->getKey()]) && isset($input[$this->getKey()]['value'])) {
             // Remove HTML tags except span with data-form-tag attribute
-            $input['title']['value'] = strip_tags($input['title']['value'], '<span>');
+            $input[$this->getKey()]['value'] = strip_tags($input[$this->getKey()]['value'], '<span>');
         }
 
         return $input;

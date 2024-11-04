@@ -43,8 +43,6 @@ global $CFG_GLPI;
 header("Content-Type: text/html; charset=UTF-8");
 Html::header_nocache();
 
-Session::checkLoginUser();
-
 try {
     $ma = new MassiveAction($_POST, $_GET, 'initial');
 } catch (\Throwable $e) {
@@ -52,7 +50,7 @@ try {
                               __s('Warning') . "'><br><br>";
     echo "<span class='b'>" . $e->getMessage() . "</span><br>";
     echo "</div>";
-    exit();
+    return;
 }
 
 echo "<div class='center massiveactions'>";
@@ -71,11 +69,13 @@ if (count($actions)) {
             echo Html::hidden($key, ['value' => $val]);
         }
     }
-    echo _n('Action', 'Actions', 1);
+    $rand = mt_rand();
+
+    echo "<label for=\"dropdown_massiveaction$rand\">" . _sn('Action', 'Actions', 1) . "</label>";
     echo "&nbsp;";
 
     $actions = ['-1' => Dropdown::EMPTY_VALUE] + $actions;
-    $rand    = Dropdown::showFromArray('massiveaction', $actions);
+    Dropdown::showFromArray('massiveaction', $actions, ['rand' => $rand]);
 
     echo "<br><br>";
 

@@ -215,7 +215,6 @@ class View extends CommonGLPI
      *
      * @param bool   $force_refresh do not rely on cache to get plugins list
      * @param bool   $only_lis display only the li tags in return html (used by ajax queries)
-     * @param string $tag_filter filter the plugin list by given tag
      * @param string $string_filter filter the plugin by given string
      *
      * @return void display things
@@ -249,17 +248,18 @@ class View extends CommonGLPI
             }
 
             $clean_plugin = [
-                'key'          => $key,
-                'name'         => $plugin['name'],
-                'logo_url'     => $apidata['logo_url'] ?? "",
-                'description'  => $apidata['descriptions'][0]['short_description'] ?? "",
-                'authors'      => $apidata['authors'] ?? [['id' => 'all', 'name' => $plugin['author'] ?? ""]],
-                'license'      => $apidata['license'] ?? $plugin['license'] ?? "",
-                'note'         => $apidata['note'] ?? -1,
-                'homepage_url' => $apidata['homepage_url'] ?? "",
-                'issues_url'   => $apidata['issues_url'] ?? "",
-                'readme_url'   => $apidata['readme_url'] ?? "",
-                'version'      => $plugin['version'] ?? "",
+                'key'           => $key,
+                'name'          => $plugin['name'],
+                'logo_url'      => $apidata['logo_url'] ?? "",
+                'description'   => $apidata['descriptions'][0]['short_description'] ?? "",
+                'authors'       => $apidata['authors'] ?? [['id' => 'all', 'name' => $plugin['author'] ?? ""]],
+                'license'       => $apidata['license'] ?? $plugin['license'] ?? "",
+                'note'          => $apidata['note'] ?? -1,
+                'homepage_url'  => $apidata['homepage_url'] ?? "",
+                'issues_url'    => $apidata['issues_url'] ?? "",
+                'readme_url'    => $apidata['readme_url'] ?? "",
+                'version'       => $plugin['version'] ?? "",
+                'changelog_url' => $apidata['changelog_url'] ?? "",
             ];
 
             $plugins[] = $clean_plugin;
@@ -271,7 +271,7 @@ class View extends CommonGLPI
     /**
      * Display discover tab (all availble plugins)
      *
-     * @param bool   $force_refresh do not rely on cache to get plugins list
+     * @param bool   $force do not rely on cache to get plugins list
      * @param bool   $only_lis display only the li tags in return html (used by ajax queries)
      * @param string $tag_filter filter the plugin list by given tag
      * @param string $string_filter filter the plugin by given string
@@ -531,7 +531,7 @@ JS;
         $description = Toolbox::stripTags($plugin['description']);
 
         $authors = Toolbox::stripTags(implode(', ', array_column($plugin['authors'] ?? [], 'name', 'id')));
-        $authors_title = htmlspecialchars($authors);
+        $authors_title = htmlescape($authors);
         $authors = strlen($authors)
             ? "<i class='fa-fw ti ti-users'></i>{$authors}"
             : "";
@@ -550,28 +550,28 @@ JS;
             ? self::getStarsHtml($plugin['note'])
             : "";
 
-        $home_url = htmlspecialchars($plugin['homepage_url'] ?? "");
+        $home_url = htmlescape($plugin['homepage_url']);
         $home_url = strlen($home_url)
             ? "<a href='{$home_url}' target='_blank' >
                <i class='ti ti-home-2 add_tooltip' title='" . __s("Homepage") . "'></i>
                </a>"
             : "";
 
-        $issues_url = htmlspecialchars($plugin['issues_url'] ?? "");
+        $issues_url = htmlescape($plugin['issues_url']);
         $issues_url = strlen($issues_url)
             ? "<a href='{$issues_url}' target='_blank' >
                <i class='ti ti-bug add_tooltip' title='" . __s("Get help") . "'></i>
                </a>"
             : "";
 
-        $readme_url = htmlspecialchars($plugin['readme_url'] ?? "");
+        $readme_url = htmlescape($plugin['readme_url']);
         $readme_url = strlen($readme_url)
             ? "<a href='{$readme_url}' target='_blank' >
                <i class='ti ti-book add_tooltip' title='" . __s("Readme") . "'></i>
                </a>"
             : "";
 
-        $changelog_url = htmlspecialchars($plugin['changelog_url'] ?? "");
+        $changelog_url = htmlescape($plugin['changelog_url']);
         $changelog_url = strlen($changelog_url)
             ? "<a href='{$changelog_url}' target='_blank' >
                <i class='ti ti-news add_tooltip' title='" . __s("Changelog") . "'></i>
@@ -649,7 +649,7 @@ HTML;
     /**
      * Return HTML part for plugin stars
      *
-     * @param float|int $value current stars note on 5
+     * @param float $value current stars note on 5
      *
      * @return string plugins stars html
      */
@@ -809,7 +809,7 @@ HTML;
             } else if ($can_be_updated) {
                 $update_title = sprintf(
                     __s("A new version (%s) is available, update?", 'marketplace'),
-                    htmlspecialchars($web_update_version)
+                    htmlescape($web_update_version)
                 );
 
                 $buttons .= TemplateRenderer::getInstance()->render('components/plugin_update_modal.html.twig', [
@@ -907,13 +907,12 @@ HTML;
                                    </a>',
                 'content' => sprintf(
                     __s('By uninstalling the "%s" plugin you will lose all the data of the plugin.'),
-                    htmlspecialchars($plugin_inst->getField('name'))
+                    htmlescape($plugin_inst->getField('name'))
                 )
             ]);
 
             if (!strlen($error) && $is_actived && $config_page) {
-                $plugin_dir = Plugin::getWebDir($plugin_key, true);
-                $config_url = "$plugin_dir/$config_page";
+                $config_url = "{$CFG_GLPI['root_doc']}/plugins/{$plugin_key}/{$config_page}";
                 $buttons .= "<a href='$config_url'>
                         <button class='add_tooltip' title='" . __s("Configure") . "'>
                             <i class='ti ti-tool'></i>
@@ -939,7 +938,7 @@ HTML;
     {
         $icon = "";
 
-        $logo_url = htmlspecialchars($plugin['logo_url'] ?? "");
+        $logo_url = htmlescape($plugin['logo_url']);
         if (strlen($logo_url)) {
             $icon = "<img src='{$logo_url}'>";
         } else {

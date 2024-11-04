@@ -665,11 +665,11 @@ class NetworkPort extends CommonDBChild
             $canedit
             && (empty($withtemplate) || ($withtemplate != 2))
         ) {
-            echo "\n<form method='get' action='" . $netport::getFormURL() . "'>\n";
-            echo "<input type='hidden' name='items_id' value='" . $item->getID() . "'>\n";
-            echo "<input type='hidden' name='itemtype' value='" . $itemtype . "'>\n";
-            echo "<div class='firstbloc'><table class='tab_cadre_fixe'>\n";
-            echo "<tr class='tab_bg_2'><td class='center'>\n";
+            echo "<form method='get' action='" . $netport::getFormURL() . "'>";
+            echo "<input type='hidden' name='items_id' value='" . $item->getID() . "'>";
+            echo "<input type='hidden' name='itemtype' value='" . $itemtype . "'>";
+            echo "<div class='firstbloc'><table class='tab_cadre_fixe'>";
+            echo "<tr class='tab_bg_2'><td class='center'>";
             echo __s('Network port type to be added');
             echo "&nbsp;";
 
@@ -685,13 +685,13 @@ class NetworkPort extends CommonDBChild
                 ['value' => 'NetworkPortEthernet']
             );
 
-            echo "</td>\n";
+            echo "</td>";
             echo "<td class='tab_bg_2 center' width='50%'>";
             echo __s('Add several ports');
-            echo "&nbsp;<input type='checkbox' name='several' value='1'></td>\n";
-            echo "<td>\n";
-            echo "<input type='submit' name='create' value=\"" . _sx('button', 'Add') . "\" class='btn btn-primary'>\n";
-            echo "</td></tr></table></div>\n";
+            echo "&nbsp;<input type='checkbox' name='several' value='1'></td>";
+            echo "<td>";
+            echo "<input type='submit' name='create' value=\"" . _sx('button', 'Add') . "\" class='btn btn-primary'>";
+            echo "</td></tr></table></div>";
             Html::closeForm();
         }
 
@@ -765,7 +765,7 @@ class NetworkPort extends CommonDBChild
         echo "</td></tr>";
 
         echo "<tr><th colspan='$colspan'>";
-        echo htmlspecialchars(sprintf(
+        echo htmlescape(sprintf(
             __('%s %s'),
             count($ports_iterator),
             NetworkPort::getTypeName(count($ports_iterator))
@@ -839,7 +839,7 @@ class NetworkPort extends CommonDBChild
             ];
 
             echo "<thead><tr><th colspan='" . count($dprefs) . "'>";
-            echo htmlspecialchars(sprintf(
+            echo htmlescape(sprintf(
                 __('%s %s'),
                 count($mports_iterator),
                 _n('Management port', 'Management ports', count($mports_iterator))
@@ -852,7 +852,7 @@ class NetworkPort extends CommonDBChild
                 echo "<th>";
                 foreach ($so as $option) {
                     if ($option['id'] == $dpref) {
-                        echo htmlspecialchars($option['name']);
+                        echo htmlescape($option['name']);
                         continue;
                     }
                 }
@@ -931,7 +931,7 @@ class NetworkPort extends CommonDBChild
                                 $name = sprintf(__('%1$s (%2$s)'), $name, $port['id']);
                             }
 
-                            $output .= '<a href="' . htmlspecialchars($url) . '">' . htmlspecialchars($name) . '</a>';
+                            $output .= '<a href="' . htmlescape($url) . '">' . htmlescape($name) . '</a>';
                             break;
                         case 31:
                             $speed = $port[$option['field']];
@@ -945,7 +945,7 @@ class NetworkPort extends CommonDBChild
                                 }
                             }
                             //TRANS: %1$s is a number maybe float or string and %2$s the unit
-                            $output .= htmlspecialchars(sprintf(__('%1$s %2$s'), round($speed, 2), $val));
+                            $output .= htmlescape(sprintf(__('%1$s %2$s'), round($speed, 2), $val));
                             break;
                         case 32:
                             $state_class = '';
@@ -966,9 +966,9 @@ class NetworkPort extends CommonDBChild
                             }
                             $output .= sprintf(
                                 '<i class="fas fa-circle %s" title="%s"></i> <span class="sr-only">%s</span>',
-                                htmlspecialchars($state_class),
-                                htmlspecialchars($state_title),
-                                htmlspecialchars($state_title)
+                                htmlescape($state_class),
+                                htmlescape($state_title),
+                                htmlescape($state_title)
                             );
                             break;
                         case 34:
@@ -1166,9 +1166,9 @@ class NetworkPort extends CommonDBChild
                             }
                             $output .= sprintf(
                                 '<i class="fas %s" title="%s"></i> <span class="sr-only">%s</span>',
-                                htmlspecialchars($co_class),
-                                htmlspecialchars($title),
-                                htmlspecialchars($title)
+                                htmlescape($co_class),
+                                htmlescape($title),
+                                htmlescape($title)
                             );
                             break;
                         case 41:
@@ -1273,13 +1273,13 @@ class NetworkPort extends CommonDBChild
         $link = $port->getLink();
 
         if (!empty($port->fields['mac'])) {
-            $link .= '<br/>' . htmlspecialchars($port->fields['mac']);
+            $link .= '<br/>' . htmlescape($port->fields['mac']);
         }
 
         $ips_iterator = $this->getIpsForPort($port::class, $port->getID());
         $ips = '';
         foreach ($ips_iterator as $ipa) {
-            $ips .= ' ' . htmlspecialchars($ipa['name']);
+            $ips .= ' ' . htmlescape($ipa['name']);
         }
         if (!empty($ips)) {
             $link .= '<br/>' . $ips;

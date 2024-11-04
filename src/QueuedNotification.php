@@ -51,6 +51,11 @@ class QueuedNotification extends CommonDBTM
         return __('Notification queue');
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['admin', self::class];
+    }
+
     public static function canCreate(): bool
     {
         // Everybody can create : human and cron
@@ -104,7 +109,10 @@ class QueuedNotification extends CommonDBTM
                     if ($item->canEdit($id)) {
                         if ($item->fields['mode'] === Notification_NotificationTemplate::MODE_AJAX) {
                             $ma->itemDone($item->getType(), $id, MassiveAction::NO_ACTION);
-                        } elseif ($item->sendById($id)) {
+                        } elseif (
+                            ($item instanceof QueuedNotification)
+                            && $item->sendById($id)
+                        ) {
                             $ma->itemDone($item->getType(), $id, MassiveAction::ACTION_OK);
                         } else {
                             $ma->itemDone($item->getType(), $id, MassiveAction::ACTION_KO);
@@ -519,7 +527,7 @@ class QueuedNotification extends CommonDBTM
     /**
      * Cron action on notification queue: send notifications in queue
      *
-     * @param CommonDBTM $task for log (default NULL)
+     * @param CronTask $task for log (default NULL)
      *
      * @return integer either 0 or 1
      * @used-by CronTask
@@ -561,7 +569,7 @@ class QueuedNotification extends CommonDBTM
     /**
      * Cron action on queued notification: clean notification queue
      *
-     * @param CommonDBTM $task for log (default NULL)
+     * @param CronTask $task for log (default NULL)
      *
      * @return integer either 0 or 1
      * @used-by CronTask

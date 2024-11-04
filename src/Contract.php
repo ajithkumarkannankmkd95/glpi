@@ -71,6 +71,11 @@ class Contract extends CommonDBTM
         return _n('Contract', 'Contracts', $nb);
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['management', self::class];
+    }
+
     public function post_getEmpty()
     {
         if (isset($_SESSION['glpiactive_entity'])) {
@@ -444,7 +449,8 @@ class Contract extends CommonDBTM
                 $values['duration'],
                 0,
                 true,
-                ((int) $values['renewal'] === self::RENEWAL_TACIT)
+                (int) $values['renewal'] === self::RENEWAL_TACIT,
+                $values['periodicity']
             ),
             default => parent::getSpecificValueToDisplay($field, $values, $options),
         };
@@ -636,7 +642,8 @@ class Contract extends CommonDBTM
             'additionalfields'   => [
                 'begin_date',
                 'duration',
-                'renewal'
+                'renewal',
+                'periodicity'
             ],
             'name'               => __('Expiration'),
             'datatype'           => 'specific',
@@ -1058,7 +1065,7 @@ class Contract extends CommonDBTM
         ]);
         $out    = "";
         foreach ($iterator as $data) {
-            $out .= htmlspecialchars(Dropdown::getDropdownName("glpi_suppliers", $data['id'])) . "<br>";
+            $out .= htmlescape(Dropdown::getDropdownName("glpi_suppliers", $data['id'])) . "<br>";
         }
         return $out;
     }
@@ -1076,7 +1083,7 @@ class Contract extends CommonDBTM
      * @return integer
      * @used-by CronTask
      **/
-    public static function cronContract(CronTask $task = null)
+    public static function cronContract(?CronTask $task = null)
     {
         /**
          * @var array $CFG_GLPI
@@ -1339,7 +1346,7 @@ class Contract extends CommonDBTM
                             $task->log(sprintf(__('%1$s: %2$s') . "\n", $entityname, $message));
                             $task->addVolume(1);
                         } else {
-                            Session::addMessageAfterRedirect(htmlspecialchars(sprintf(
+                            Session::addMessageAfterRedirect(htmlescape(sprintf(
                                 __('%1$s: %2$s'),
                                 $entityname,
                                 $message
@@ -1364,7 +1371,7 @@ class Contract extends CommonDBTM
                         if ($task) {
                             $task->log($msg);
                         } else {
-                            Session::addMessageAfterRedirect(htmlspecialchars($msg), false, ERROR);
+                            Session::addMessageAfterRedirect(htmlescape($msg), false, ERROR);
                         }
                     }
                 }
@@ -1630,7 +1637,7 @@ class Contract extends CommonDBTM
         array &$actions,
         $itemtype,
         $is_deleted = false,
-        CommonDBTM $checkitem = null
+        ?CommonDBTM $checkitem = null
     ) {
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;

@@ -41,8 +41,6 @@ if (strpos($_SERVER['PHP_SELF'], "searchoptionvalue.php")) {
     Html::header_nocache();
 }
 
-Session::checkLoginUser();
-
 if (isset($_POST['searchtype'])) {
     $searchopt      = $_POST['searchopt'];
     if ($ajax) {
@@ -69,7 +67,7 @@ if (isset($_POST['searchtype'])) {
         case "lessthan":
         case "under":
         case "notunder":
-            if (!$display && isset($searchopt['field'])) {
+            if (isset($searchopt['field'])) {
                 // Specific cases
                 switch ($searchopt['table'] . "." . $searchopt['field']) {
                    // Add mygroups choice to searchopt
@@ -123,7 +121,7 @@ if (isset($_POST['searchtype'])) {
                 }
 
                 // Standard datatype usage
-                if (!$display && isset($searchopt['datatype'])) {
+                if (isset($searchopt['datatype'])) {
                     switch ($searchopt['datatype']) {
                         case "date":
                         case "date_delay":
@@ -162,6 +160,6 @@ if (isset($_POST['searchtype'])) {
    // Default case : text field
     if (!$display) {
         echo "<input type='text' size='13' name='$inputname' value=\"" .
-               htmlspecialchars($_POST['value']) . "\">";
+               htmlescape($_POST['value']) . "\">";
     }
 }

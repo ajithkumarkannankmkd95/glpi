@@ -154,7 +154,7 @@ TWIG, $twig_params);
                 $entries[] = [
                     'itemtype' => self::class,
                     'id' => $data['id'],
-                    'language' => '<a href="' . htmlspecialchars($href) . '">' . htmlspecialchars($lang) . '</a>',
+                    'language' => '<a href="' . htmlescape($href) . '">' . htmlescape($lang) . '</a>',
                 ];
             }
         }
@@ -357,11 +357,11 @@ TWIG, $twig_params);
             }
             $rows[] = [
                 'values' => [
-                    ['content' => htmlspecialchars($tag)],
-                    ['content' => htmlspecialchars($label)],
-                    ['content' => htmlspecialchars($event)],
-                    ['content' => htmlspecialchars($action)],
-                    ['content' => htmlspecialchars($allowed_values)],
+                    ['content' => htmlescape($tag)],
+                    ['content' => htmlescape($label)],
+                    ['content' => htmlescape($event)],
+                    ['content' => htmlescape($action)],
+                    ['content' => htmlescape($allowed_values)],
                 ]
             ];
         }
@@ -389,8 +389,7 @@ TWIG, $twig_params);
             switch ($item::class) {
                 case self::class:
                     return self::createTabEntry(__('Preview'), 0, $item::class, 'ti ti-template');
-                    break;
-                case 'NotificationTemplate':
+                case NotificationTemplate::class:
                     if ($_SESSION['glpishow_count_on_tabs']) {
                         $nb = countElementsInTable(
                             static::getTable(),

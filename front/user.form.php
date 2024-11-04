@@ -34,6 +34,7 @@
  */
 
 use Glpi\Event;
+use Glpi\Exception\Http\NotFoundHttpException;
 
 /** @var array $CFG_GLPI */
 global $CFG_GLPI;
@@ -44,8 +45,6 @@ if (isset($_POST['language']) && !Session::getLoginUserID()) {
     Session::addMessageAfterRedirect(__s('Lang has been changed!'));
     Html::back();
 }
-
-Session::checkLoginUser();
 
 if (empty($_GET["id"])) {
     $_GET["id"] = "";
@@ -60,7 +59,7 @@ if (empty($_GET["id"]) && isset($_GET["name"])) {
         $user->check($user->fields['id'], READ);
         Html::redirect($user->getFormURLWithID($user->fields['id']));
     }
-    Html::displayNotFoundError();
+    throw new NotFoundHttpException();
 }
 
 if (empty($_GET["name"])) {
@@ -155,7 +154,7 @@ if (isset($_GET['getvcard'])) {
         User::changeAuthMethod([$_POST["id"]], $_POST["authtype"], $_POST["auths_id"]);
     }
     Html::back();
-} else if (isset($_POST['language']) && !GLPI_DEMO_MODE) {
+} else if (isset($_POST['language'])) {
     $user->update(
         [
             'id'        => Session::getLoginUserID(),

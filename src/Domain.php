@@ -77,6 +77,11 @@ class Domain extends CommonDBTM
         return _n('Domain', 'Domains', $nb);
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['management', self::class];
+    }
+
     public function cleanDBonPurge()
     {
         /** @var \DBmysql $DB */
@@ -473,7 +478,6 @@ class Domain extends CommonDBTM
                 ]);
                 echo Html::submit(_x('button', 'Post'), ['name' => 'massiveaction']);
                 return true;
-            break;
             case "uninstall":
                 Dropdown::showSelectItemFromItemtypes([
                     'items_id_name' => 'item_item',
@@ -483,7 +487,6 @@ class Domain extends CommonDBTM
                 ]);
                 echo Html::submit(_x('button', 'Post'), ['name' => 'massiveaction']);
                 return true;
-            break;
             case "duplicate":
                 Dropdown::show('Entity');
                 break;
@@ -605,7 +608,6 @@ class Domain extends CommonDBTM
                 return [
                     'description' => __('Expired or expiring domains')
                 ];
-            break;
         }
         return [];
     }
@@ -741,7 +743,7 @@ class Domain extends CommonDBTM
                             $task->log($msg);
                             $task->addVolume(1);
                         } else {
-                            Session::addMessageAfterRedirect(htmlspecialchars($msg));
+                            Session::addMessageAfterRedirect(htmlescape($msg));
                         }
 
                         // Add alert
@@ -765,7 +767,7 @@ class Domain extends CommonDBTM
                         if ($task) {
                             $task->log($msg);
                         } else {
-                            Session::addMessageAfterRedirect(htmlspecialchars($msg), false, ERROR);
+                            Session::addMessageAfterRedirect(htmlescape($msg), false, ERROR);
                         }
                     }
                 }
@@ -848,10 +850,9 @@ class Domain extends CommonDBTM
     {
         $links = [];
         if (static::canManageRecords()) {
-            $rooms = "<i class='fa fa-clipboard-list pointer' title=\"" . DomainRecord::getTypeName(Session::getPluralNumber()) . "\"></i>
-            <span class='d-none d-xxl-block ps-1'>
-               " . DomainRecord::getTypeName(Session::getPluralNumber()) . "
-            </span>";
+            $label = htmlescape(DomainRecord::getTypeName(Session::getPluralNumber()));
+            $rooms = "<i class='fa fa-clipboard-list pointer' title=\"$label\"></i>
+            <span class='d-none d-xxl-block ps-1'>$label</span>";
             $links[$rooms] = DomainRecord::getSearchURL(false);
         }
         if (count($links)) {
@@ -864,7 +865,7 @@ class Domain extends CommonDBTM
     {
         if (static::canManageRecords()) {
             return [
-                'domainrecord' => [
+                DomainRecord::class => [
                     'icon'  => DomainRecord::getIcon(),
                     'title' => DomainRecord::getTypeName(Session::getPluralNumber()),
                     'page'  => DomainRecord::getSearchURL(false),

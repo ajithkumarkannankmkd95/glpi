@@ -32,6 +32,10 @@
  * ---------------------------------------------------------------------
  */
 
-final class PluginTesterMyLegacyClass
+final class PluginTesterMyLegacyClass extends CommonDBTM
 {
+    public static function getTypeName($nb = 0): string
+    {
+        return 'Tester plugin legacy itemtype';
+    }
 }

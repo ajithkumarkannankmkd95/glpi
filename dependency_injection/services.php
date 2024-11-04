@@ -35,9 +35,7 @@
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
 use Glpi\DependencyInjection\PublicService;
-use Glpi\Http\Firewall;
-use Glpi\Http\FirewallInterface;
-use Glpi\Security\SecurityStrategyAttributeListener;
+use Glpi\Log\LegacyGlobalLogger;
 
 return static function (ContainerConfigurator $container): void {
     $projectDir = dirname(__DIR__);
@@ -49,7 +47,7 @@ return static function (ContainerConfigurator $container): void {
     $parameters->set('env(APP_SECRET_FILE)', $projectDir . '/config/glpicrypt.key');
     $parameters->set('kernel.secret', env('default:glpi.default_secret:file:APP_SECRET_FILE'));
 
-    $services
+    $services = $services
         ->defaults()
             ->autowire()
             ->autoconfigure()
@@ -59,22 +57,11 @@ return static function (ContainerConfigurator $container): void {
     $services->load('Glpi\Config\\', $projectDir . '/src/Glpi/Config');
     $services->load('Glpi\Controller\\', $projectDir . '/src/Glpi/Controller');
     $services->load('Glpi\Http\\', $projectDir . '/src/Glpi/Http');
+    $services->load('Glpi\DependencyInjection\\', $projectDir . '/src/Glpi/DependencyInjection');
 
-    $services->set(SecurityStrategyAttributeListener::class);
-
-    $services->set(Firewall::class)
-        ->factory([Firewall::class, 'createDefault'])
-        ->tag('proxy', ['interface' => FirewallInterface::class])
-        ->lazy()
-    ;
-
-    if ($container->env() === 'development') {
-        $container->extension('web_profiler', [
-            'toolbar' => true,
-            'intercept_redirects' => true,
-        ]);
-        $container->extension('framework', [
-            'profiler' => ['only_exceptions' => false],
-        ]);
-    }
+    /**
+     * Override Symfony's logger.
+     * @see \Symfony\Component\HttpKernel\DependencyInjection\LoggerPass
+     */
+    $services->set('logger', LegacyGlobalLogger::class);
 };

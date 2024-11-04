@@ -72,6 +72,11 @@ class Rack extends CommonDBTM
         return _n('Rack', 'Racks', $nb);
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['assets', self::class];
+    }
+
     public function defineTabs($options = [])
     {
         $ong = [];
@@ -358,9 +363,8 @@ class Rack extends CommonDBTM
 
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
-
-        switch ($item->getType()) {
-            case DCRoom::getType():
+        switch (get_class($item)) {
+            case DCRoom::class:
                 $nb = 0;
                 if ($_SESSION['glpishow_count_on_tabs']) {
                     $nb = countElementsInTable(
@@ -376,7 +380,6 @@ class Rack extends CommonDBTM
                     $nb,
                     $item::getType()
                 );
-             break;
         }
         return '';
     }
@@ -437,8 +440,8 @@ class Rack extends CommonDBTM
         );
 
         echo "<div id='switchview'>";
-        echo "<i id='sviewlist' class='pointer ti ti-list' title='" . __('View as list') . "'></i>";
-        echo "<i id='sviewgraph' class='pointer ti ti-layout-grid selected' title='" . __('View graphical representation') . "'></i>";
+        echo "<i id='sviewlist' class='pointer ti ti-list' title='" . __s('View as list') . "'></i>";
+        echo "<i id='sviewgraph' class='pointer ti ti-layout-grid selected' title='" . __s('View graphical representation') . "'></i>";
         echo "</div>";
 
         $racks = iterator_to_array($racks);
@@ -446,7 +449,7 @@ class Rack extends CommonDBTM
 
         $rack = new self();
         if (!count($racks)) {
-            echo "<table class='tab_cadre_fixe'><tr><th>" . __('No rack found') . "</th></tr>";
+            echo "<table class='tab_cadre_fixe'><tr><th>" . __s('No rack found') . "</th></tr>";
             echo "</table>";
         } else {
             if ($canedit) {
@@ -465,7 +468,7 @@ class Rack extends CommonDBTM
                 $header .= Html::getCheckAllAsCheckbox('mass' . __CLASS__ . $rand);
                 $header .= "</th>";
             }
-            $header .= "<th>" . __('Name') . "</th>";
+            $header .= "<th>" . __s('Name') . "</th>";
             $header .= "</tr>";
 
             echo $header;
@@ -515,8 +518,8 @@ class Rack extends CommonDBTM
             $coord = explode(',', $item['position']);
             if (is_array($coord) && count($coord) == 2) {
                 list($x, $y) = $coord;
-                $item['_x'] = $x - 1;
-                $item['_y'] = $y - 1;
+                $item['_x'] = (int)$x - 1;
+                $item['_y'] = (int)$y - 1;
             } else {
                 $item['_x'] = null;
                 $item['_y'] = null;
@@ -534,7 +537,7 @@ class Rack extends CommonDBTM
 
         if (count($outbound)) {
             echo "<table class='outbound'><thead><th>";
-            echo __('Following elements are out of room bounds');
+            echo __s('Following elements are out of room bounds');
             echo "</th></thead><tbody>";
             foreach ($outbound as $out) {
                 $rack->getFromResultSet($out);
@@ -842,7 +845,7 @@ JAVASCRIPT;
 
         if ($existing > 0) {
             Session::addMessageAfterRedirect(
-                htmlspecialchars(sprintf(
+                htmlescape(sprintf(
                     __('%1$s position is not available'),
                     $input['position']
                 )),
@@ -857,7 +860,8 @@ JAVASCRIPT;
     /**
      * Get already filled places
      *
-     * @param string $current Current position to exclude; defaults to null
+     * @param string $itemtype Item type
+     * @param int    $items_id Item ID
      *
      * @return array [x => [left => [depth, depth, depth, depth]], [right => [depth, depth, depth, depth]]]
      */
@@ -973,33 +977,33 @@ JAVASCRIPT;
      */
     private static function getCell(Rack $rack, $cell)
     {
-        $bgcolor = $rack->getField('bgcolor');
-        $fgcolor = Html::getInvertedColor($bgcolor);
-        return "<div class='grid-stack-item room_orientation_" . $cell['room_orientation'] . "'
-                  gs-id='" . $cell['id'] . "'
+        $bgcolor = htmlescape($rack->getField('bgcolor'));
+        $fgcolor = htmlescape(Html::getInvertedColor($bgcolor));
+        return "<div class='grid-stack-item room_orientation_" . htmlescape($cell['room_orientation']) . "'
+                  gs-id='" . htmlescape($cell['id']) . "'
                   gs-locked='true'
                   gs-h='1'
                   gs-w='1'
-                  gs-x='" . $cell['_x'] . "'
-                  gs-y='" . $cell['_y'] . "'>
+                  gs-x='" . htmlescape($cell['_x']) . "'
+                  gs-y='" . htmlescape($cell['_y']) . "'>
             <div class='grid-stack-item-content'
                   style='background-color: $bgcolor;
                         color: $fgcolor;'>
                <a href='" . $rack->getLinkURL() . "'
                   style='color: $fgcolor'>" .
-                  $cell['name'] . "</a>
+                  htmlescape($cell['name']) . "</a>
                <span class='tipcontent'>
                   <span>
-                     <label>" . __('name') . ":</label>" .
-                     $cell['name'] . "
+                     <label>" . __s('name') . ":</label>" .
+                     htmlescape($cell['name']) . "
                   </span>
                   <span>
-                     <label>" . __('serial') . ":</label>" .
-                     $cell['serial'] . "
+                     <label>" . __s('serial') . ":</label>" .
+                     htmlescape($cell['serial']) . "
                   </span>
                   <span>
-                     <label>" . __('Inventory number') . ":</label>" .
-                     $cell['otherserial'] . "
+                     <label>" . __s('Inventory number') . ":</label>" .
+                     htmlescape($cell['otherserial']) . "
                   </span>
                </span>
             </div><!-- // .grid-stack-item-content -->

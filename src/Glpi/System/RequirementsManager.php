@@ -51,6 +51,7 @@ use Glpi\System\Requirement\PhpVersion;
 use Glpi\System\Requirement\SeLinux;
 use Glpi\System\Requirement\SessionsConfiguration;
 use Glpi\System\Requirement\SessionsSecurityConfiguration;
+use Glpi\System\Requirement\DatabaseTablesEngine;
 
 /**
  * @since 9.5.0
@@ -60,11 +61,11 @@ class RequirementsManager
     /**
      * Returns core requirement list.
      *
-     * @param \DBmysql $db  DB instance (if null BD requirements will not be returned).
+     * @param \DBmysql|null $db  DB instance (if null BD requirements will not be returned).
      *
      * @return RequirementsList
      */
-    public function getCoreRequirementList(\DBmysql $db = null): RequirementsList
+    public function getCoreRequirementList(?\DBmysql $db = null): RequirementsList
     {
         $requirements = [];
 
@@ -120,6 +121,11 @@ class RequirementsManager
             'zlib',
             false,
             __('Required for handling of compressed communication with inventory agents, installation of gzip packages from marketplace and PDF generation.')
+        );
+        $requirements[] = new Extension(
+            'bcmath',
+            false,
+            __('Required for qrcode support')
         );
         $requirements[] = new ExtensionConstant(
             __('Sodium ChaCha20-Poly1305 size constant'),

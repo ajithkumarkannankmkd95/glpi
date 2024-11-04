@@ -33,6 +33,10 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Event;
+use Glpi\Exception\Http\AccessDeniedHttpException;
+use Glpi\Exception\Http\BadRequestHttpException;
+
 /**
  * @since 0.85
  */
@@ -42,15 +46,11 @@
  * @var CommonITILValidation $validation
  */
 
-use Glpi\Event;
-
-Session::checkLoginUser();
-
 if (!($validation instanceof CommonITILValidation)) {
-    Html::displayErrorAndDie('');
+    throw new BadRequestHttpException();
 }
 if (!$validation->canView()) {
-    Html::displayRightError();
+    throw new AccessDeniedHttpException();
 }
 
 $itemtype = $validation::getItilObjectItemType();
@@ -68,7 +68,6 @@ if (isset($_POST["add"])) {
 
     if (!isset($_POST['items_id_target'])) {
         Html::back();
-        return;
     }
     if (!is_array($_POST['items_id_target'])) {
         $_POST['items_id_target'] = [$_POST['items_id_target']];
@@ -124,4 +123,5 @@ if (isset($_POST["add"])) {
         Html::back();
     }
 }
-Html::displayErrorAndDie('Lost');
+
+throw new BadRequestHttpException();

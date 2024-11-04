@@ -48,12 +48,6 @@ use Ticket;
 class RequestTypeField extends AbstractConfigField
 {
     #[Override]
-    public function getKey(): string
-    {
-        return 'request_type';
-    }
-
-    #[Override]
     public function getLabel(): string
     {
         return __("Request type");
@@ -126,7 +120,7 @@ class RequestTypeField extends AbstractConfigField
 
         // Do not edit input if invalid value was found
         $valid_values = [Ticket::INCIDENT_TYPE, Ticket::DEMAND_TYPE];
-        if (!array_search($request_type, $valid_values)) {
+        if (array_search($request_type, $valid_values) === false) {
             return $input;
         }
 
@@ -167,6 +161,6 @@ class RequestTypeField extends AbstractConfigField
     #[Override]
     public function getWeight(): int
     {
-        return 30;
+        return 40;
     }
 }

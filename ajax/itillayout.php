@@ -36,13 +36,11 @@
 header('Content-Type: application/json; charset=UTF-8');
 Html::header_nocache();
 
-Session::checkLoginUser();
-
 $raw_itillayout  = $_POST['itil_layout'];
 
 $json_itillayout = json_encode($raw_itillayout);
 if ($json_itillayout === false) {
-    exit;
+    return;
 }
 
 $user = new User();

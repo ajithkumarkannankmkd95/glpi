@@ -80,12 +80,11 @@ class DisplayPreference extends CommonDBTM
     {
         switch ($ma->getAction()) {
             case 'reset_to_default':
-                $msg = __('This will reset the columns to the defaults for a new installation.');
-                $msg2 = __('This will only work for types from GLPI itself or enabled plugins that support this action.');
+                $msg = __s('This will reset the columns to the defaults for a new installation.');
+                $msg2 = __s('This will only work for types from GLPI itself or enabled plugins that support this action.');
                 echo '<div class="alert alert-info">' . $msg . '<br>' . $msg2 . '</div>';
                 echo Html::submit(_x('button', 'Post'), ['name' => 'massiveaction']);
                 return true;
-                break;
         }
         return parent::showMassiveActionsSubForm($ma);
     }
@@ -149,7 +148,7 @@ class DisplayPreference extends CommonDBTM
      *
      * @return array
      **/
-    public static function getForTypeUser($itemtype, $user_id)
+    public static function getForTypeUser($itemtype, $user_id, string $interface = 'central')
     {
         /** @var \DBmysql $DB */
         global $DB;
@@ -158,6 +157,7 @@ class DisplayPreference extends CommonDBTM
             'FROM'   => self::getTable(),
             'WHERE'  => [
                 'itemtype'  => $itemtype,
+                'interface' => $interface,
                 'OR'        => [
                     ['users_id' => $user_id],
                     ['users_id' => 0]
@@ -235,7 +235,7 @@ class DisplayPreference extends CommonDBTM
         }
     }
 
-    public function updateOrder(string $itemtype, int $users_id, array $order)
+    public function updateOrder(string $itemtype, int $users_id, array $order, string $interface = 'central')
     {
         /** @var \DBmysql $DB */
         global $DB;
@@ -253,6 +253,7 @@ class DisplayPreference extends CommonDBTM
             [
                 'itemtype' => $itemtype,
                 'users_id' => $users_id,
+                'interface' => $interface,
                 'NOT'      => [
                     'num' => $official_order
                 ]
@@ -266,12 +267,14 @@ class DisplayPreference extends CommonDBTM
                     'itemtype' => $itemtype,
                     'users_id' => $users_id,
                     'num'      => $num,
-                    'rank' => $rank
+                    'rank'     => $rank,
+                    'interface' => $interface,
                 ],
                 [
-                    'itemtype' => $itemtype,
-                    'users_id' => $users_id,
-                    'num'      => $num,
+                    'itemtype'  => $itemtype,
+                    'users_id'  => $users_id,
+                    'num'       => $num,
+                    'interface' => $interface,
                 ]
             );
         }
@@ -404,7 +407,7 @@ class DisplayPreference extends CommonDBTM
      * @param bool $global True if global config, false if personal config
      * @return void|false
      */
-    private function showConfigForm(string $itemtype, bool $global)
+    private function showConfigForm(string $itemtype, bool $global, string $interface = 'central')
     {
         /** @var \DBmysql $DB */
         global $DB;
@@ -439,7 +442,7 @@ class DisplayPreference extends CommonDBTM
         // Get fixed columns
         $fixed_columns = $this->getFixedColumns($itemtype);
         $group  = '';
-        $already_added = self::getForTypeUser($itemtype, $IDuser);
+        $already_added = self::getForTypeUser($itemtype, $IDuser, $interface);
         $available_to_add = [];
         foreach ($searchopt as $key => $val) {
             if (!is_array($val)) {
@@ -483,7 +486,8 @@ class DisplayPreference extends CommonDBTM
             'entries' => $entries,
             'has_personal' => $has_personal,
             'is_global' => $global,
-            'available_itemtype' => $available_itemtype
+            'available_itemtype' => $available_itemtype,
+            'interface' => $interface,
         ]);
     }
 
@@ -509,8 +513,8 @@ class DisplayPreference extends CommonDBTM
      * starting from the position before the item which we want to get the group name.
      * The first key of string type we encouter, is our item's group name.
      *
-     * @param array $searchopt
-     * @param int   $searchoptkey
+     * @param array $search_options
+     * @param int   $search_option_key
      *
      * @return string Return the name of the group or an empty string.
      *
@@ -539,6 +543,11 @@ class DisplayPreference extends CommonDBTM
     public function showFormGlobal($itemtype)
     {
         return $this->showConfigForm($itemtype, true);
+    }
+
+    public function showFormHelpdesk($itemtype): void
+    {
+        $this->showConfigForm($itemtype, true, 'helpdesk');
     }
 
     /**
@@ -621,6 +630,15 @@ class DisplayPreference extends CommonDBTM
                 if (Session::haveRight(self::$rightname, self::PERSONAL)) {
                     $ong[2] = $global_only ? null : __('Personal View');
                 }
+
+                $itemtype = $_GET["itemtype"] ?? null;
+                if (
+                    is_a($itemtype, CommonDBTM::class, true)
+                    && $itemtype::supportHelpdeskDisplayPreferences()
+                ) {
+                    $ong[3] = __('Helpdesk View');
+                }
+
                 return $ong;
 
             case Config::class:
@@ -637,6 +655,7 @@ class DisplayPreference extends CommonDBTM
                 return true;
 
             case __CLASS__:
+                /** @var DisplayPreference $item */
                 switch ($tabnum) {
                     case 1:
                         $item->showFormGlobal($_GET["displaytype"]);
@@ -645,6 +664,18 @@ class DisplayPreference extends CommonDBTM
                     case 2:
                         Session::checkRight(self::$rightname, self::PERSONAL);
                         $item->showFormPerso($_GET["displaytype"]);
+                        return true;
+
+                    case 3:
+                        $itemtype = $_GET["displaytype"] ?? null;
+                        if (
+                            !is_a($itemtype, CommonDBTM::class, true)
+                            || !$itemtype::supportHelpdeskDisplayPreferences()
+                        ) {
+                            return false;
+                        }
+
+                        $item->showFormHelpdesk($itemtype);
                         return true;
                 }
                 break;

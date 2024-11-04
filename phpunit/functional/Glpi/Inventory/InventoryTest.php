@@ -1125,7 +1125,7 @@ class InventoryTest extends InventoryTestCase
 
         $inventory = $this->doInventory($json);
 
-       //check inventory metadata
+        //check inventory metadata
         $metadata = $inventory->getMetadata();
         $this->assertCount(7, $metadata);
         $this->assertSame('glpixps-2018-07-09-09-07-13', $metadata['deviceid']);
@@ -2745,7 +2745,7 @@ Compiled Tue 28-Sep-10 13:44 by prod_rel_team",
 
     public function testImportStackedNetworkEquipment2()
     {
-        $xml = file_get_contents(GLPI_ROOT . '/tests/fixtures/inventories/stacked_switch_name.xml');
+        $xml = file_get_contents(FIXTURE_DIR . '/inventories/stacked_switch_name.xml');
 
         $date_now = date('Y-m-d H:i:s');
         $_SESSION['glpi_currenttime'] = $date_now;
@@ -4787,7 +4787,7 @@ Compiled Tue 28-Sep-10 13:44 by prod_rel_team",
     {
         global $DB;
 
-        $json = json_decode(file_get_contents(GLPI_ROOT . '/tests/fixtures/inventories/lxc-server-1.json'));
+        $json = json_decode(file_get_contents(FIXTURE_DIR . '/inventories/lxc-server-1.json'));
 
         $count_vms = count($json->content->virtualmachines);
         $this->assertSame(1, $count_vms);
@@ -4831,7 +4831,7 @@ Compiled Tue 28-Sep-10 13:44 by prod_rel_team",
         $this->assertSame('487dfdb542a4bfb23670b8d4e76d8b6886c2ed35', $cvms->fields['uuid']);
 
         //import again, RAM has changed
-        $json = json_decode(file_get_contents(GLPI_ROOT . '/tests/fixtures/inventories/lxc-server-1.json'));
+        $json = json_decode(file_get_contents(FIXTURE_DIR . '/inventories/lxc-server-1.json'));
         $json_vm = $json->content->virtualmachines[0];
         $json_vm->memory = 4096;
         $json_vms = [$json_vm];
@@ -5295,7 +5295,7 @@ Compiled Tue 28-Sep-10 13:44 by prod_rel_team",
 
     public function testImportPhone()
     {
-        global $DB, $CFG_GLPI;
+        global $DB;
 
         $json = json_decode(file_get_contents(self::INV_FIXTURES . 'phone_1.json'));
 
@@ -8453,5 +8453,491 @@ JSON;
         $this->doInventory($json);
         $this->assertTrue($computer->getFromDBByCrit(['name' => 'pc_with_user']));
         $this->assertSame($newuser, $computer->fields['contact']);
+    }
+
+    public function testVPNDownToUpPartial()
+    {
+        /** @var \DBmysql $DB */
+        global $DB;
+
+        $json_str = <<<JSON
+{
+   "action": "inventory",
+   "content": {
+      "hardware": {
+         "name": "pc_with_vpn",
+         "uuid": "32EED9C2-204C-42A1-A97E-A6EF2CE44B4F"
+      },
+      "networks": [
+         {
+            "description": "Fortinet SSL VPN Virtual Ethernet Adapter",
+            "speed": "100000",
+            "status": "down",
+            "type": "ethernet",
+            "virtualdev": true
+         }
+      ],
+      "versionclient": "GLPI-Inventory_v1.11"
+   },
+   "deviceid": "WinDev2404Eval-2024-10-14-15-28-37",
+   "itemtype": "Computer"
+}
+JSON;
+        $json = json_decode($json_str);
+
+        //initial import
+        $this->doInventory($json);
+
+        $computer = new \Computer();
+        $this->assertTrue($computer->getFromDBByCrit(['name' => 'pc_with_vpn']));
+
+        $nports = $DB->request(
+            [
+                'FROM' => 'glpi_networkports',
+                'WHERE' => [
+                    'itemtype' => get_class($computer),
+                    'items_id' => $computer->getID()
+                ]
+            ]
+        );
+        $this->assertCount(1, $nports);
+        $nport_ref = $nports->current();
+        $this->assertSame('2', $nport_ref['ifinternalstatus']);
+        $netname = new \NetworkName();
+        $this->assertCount(0, $netname->find());
+
+        //make partial, change vpn status, and redo inventory
+        $json = json_decode($json_str);
+        $json->partial = true;
+        $vpn = $json->content->networks[0];
+        $vpn->ipaddress = '172.27.45.21';
+        $vpn->ipmask = '255.255.255.255';
+        $vpn->ipsubnet = '172.27.45.21';
+        $vpn->mac = '00:09:0f:aa:00:01';
+        $vpn->status = 'up';
+        $json->content->networks[0] = $vpn;
+
+        $this->doInventory($json);
+        $this->assertTrue($computer->getFromDBByCrit(['name' => 'pc_with_vpn']));
+
+        $nports = $DB->request(
+            [
+                'FROM' => 'glpi_networkports',
+                'WHERE' => [
+                    'itemtype' => get_class($computer),
+                    'items_id' => $computer->getID()
+                ]
+            ]
+        );
+        $this->assertCount(1, $nports);
+
+        $nport = $nports->current();
+        $this->assertNotEquals($nport_ref['id'], $nport['id']);
+        $this->assertSame('1', $nport['ifinternalstatus']);
+        $this->assertSame('00:09:0f:aa:00:01', $nport['mac']);
+
+        $netname = new \NetworkName();
+        $this->assertTrue(
+            $netname->getFromDBByCrit([
+                'itemtype' => \NetworkPort::getType(),
+                'items_id' => $nport['id']
+            ])
+        );
+        $ip = new \IPAddress();
+        $this->assertTrue(
+            $ip->getFromDBByCrit([
+                'itemtype' => $netname::getType(),
+                'items_id' => $netname->getID()
+            ])
+        );
+        $this->assertSame(4, $ip->fields['version']);
+        $this->assertSame('172.27.45.21', $ip->fields['name']);
+
+        //make partial without any ports, and redo inventory
+        $json = json_decode($json_str);
+        $json->partial = true;
+        unset($json->content->networks);
+
+        $this->doInventory($json);
+        $this->assertTrue($computer->getFromDBByCrit(['name' => 'pc_with_vpn']));
+
+        $nports = $DB->request(
+            [
+                'FROM' => 'glpi_networkports',
+                'WHERE' => [
+                    'itemtype' => get_class($computer),
+                    'items_id' => $computer->getID()
+                ]
+            ]
+        );
+        $this->assertCount(1, $nports);
+
+        //change vpn status, and redo inventory
+        $json = json_decode($json_str);
+        $vpn = $json->content->networks[0];
+        $vpn->status = 'up';
+        $vpn->ipaddress = '172.27.45.20';
+        $vpn->ipmask = '255.255.255.255';
+        $vpn->ipsubnet = '172.27.45.20';
+        $vpn->mac = '00:09:0f:aa:00:01';
+        $json->content->networks[0] = $vpn;
+        $this->doInventory($json);
+        $this->assertTrue($computer->getFromDBByCrit(['name' => 'pc_with_vpn']));
+
+        $nports = $DB->request(
+            [
+                'FROM' => 'glpi_networkports',
+                'WHERE' => [
+                    'itemtype' => get_class($computer),
+                    'items_id' => $computer->getID()
+                ]
+            ]
+        );
+        $this->assertCount(1, $nports);
+        $nport = $nports->current();
+        $this->assertNotEquals($nport_ref['id'], $nport['id']);
+        $this->assertSame('1', $nport['ifinternalstatus']);
+        $this->assertSame('00:09:0f:aa:00:01', $nport['mac']);
+
+        $netname = new \NetworkName();
+        $this->assertTrue(
+            $netname->getFromDBByCrit([
+                'itemtype' => \NetworkPort::getType(),
+                'items_id' => $nport['id']
+            ])
+        );
+        $ip = new \IPAddress();
+        $this->assertTrue(
+            $ip->getFromDBByCrit([
+                'itemtype' => $netname::getType(),
+                'items_id' => $netname->getID()
+            ])
+        );
+        $this->assertSame(4, $ip->fields['version']);
+        $this->assertSame('172.27.45.20', $ip->fields['name']);
+
+        //without any ports, and redo inventory
+        $json = json_decode($json_str);
+        unset($json->content->networks);
+
+        $this->doInventory($json);
+        $this->assertTrue($computer->getFromDBByCrit(['name' => 'pc_with_vpn']));
+
+        $nports = $DB->request(
+            [
+                'FROM' => 'glpi_networkports',
+                'WHERE' => [
+                    'itemtype' => get_class($computer),
+                    'items_id' => $computer->getID()
+                ]
+            ]
+        );
+        $this->assertCount(0, $nports);
+    }
+
+    public function testChangeIP()
+    {
+        /** @var \DBmysql $DB */
+        global $DB;
+
+        $json_str = <<<JSON
+{
+   "action": "inventory",
+   "content": {
+      "hardware": {
+         "name": "pc_with_vpn",
+         "uuid": "32EED9C2-204C-42A1-A97E-A6EF2CE44B4F"
+      },
+      "networks": [
+         {
+            "description": "Fortinet SSL VPN Virtual Ethernet Adapter",
+            "speed": "100000",
+            "status": "up",
+            "type": "ethernet",
+            "virtualdev": true,
+            "ipaddress": "172.27.45.21",
+            "ipmask": "255.255.255.255",
+            "ipsubnet": "172.27.45.21",
+            "mac": "00:09:0f:aa:00:01"
+         }
+      ],
+      "versionclient": "GLPI-Inventory_v1.11"
+   },
+   "deviceid": "WinDev2404Eval-2024-10-14-15-28-37",
+   "itemtype": "Computer"
+}
+JSON;
+        $json = json_decode($json_str);
+        $computer = new \Computer();
+
+        //initial import
+        $this->doInventory($json);
+        $this->assertTrue($computer->getFromDBByCrit(['name' => 'pc_with_vpn']));
+
+        $nports = $DB->request(
+            [
+                'FROM' => 'glpi_networkports',
+                'WHERE' => [
+                    'itemtype' => get_class($computer),
+                    'items_id' => $computer->getID()
+                ]
+            ]
+        );
+        $this->assertCount(1, $nports);
+
+        $nport = $nports->current();
+        $this->assertSame('1', $nport['ifinternalstatus']);
+        $this->assertSame('00:09:0f:aa:00:01', $nport['mac']);
+
+        $netname = new \NetworkName();
+        $this->assertTrue(
+            $netname->getFromDBByCrit([
+                'itemtype' => \NetworkPort::getType(),
+                'items_id' => $nport['id']
+            ])
+        );
+        $ip = new \IPAddress();
+        $this->assertTrue(
+            $ip->getFromDBByCrit([
+                'itemtype' => $netname::getType(),
+                'items_id' => $netname->getID()
+            ])
+        );
+        $this->assertSame(4, $ip->fields['version']);
+        $this->assertSame('172.27.45.21', $ip->fields['name']);
+
+        //change IP, and redo inventory
+        $json = json_decode($json_str);
+        $vpn = $json->content->networks[0];
+        $vpn->ipaddress = '172.27.45.20';
+        $json->content->networks[0] = $vpn;
+        $this->doInventory($json);
+        $this->assertTrue($computer->getFromDBByCrit(['name' => 'pc_with_vpn']));
+
+        $nports = $DB->request(
+            [
+                'FROM' => 'glpi_networkports',
+                'WHERE' => [
+                    'itemtype' => get_class($computer),
+                    'items_id' => $computer->getID()
+                ]
+            ]
+        );
+        $this->assertCount(1, $nports);
+        $nport = $nports->current();
+        $this->assertSame('1', $nport['ifinternalstatus']);
+        $this->assertSame('00:09:0f:aa:00:01', $nport['mac']);
+
+        $netname = new \NetworkName();
+        $this->assertTrue(
+            $netname->getFromDBByCrit([
+                'itemtype' => \NetworkPort::getType(),
+                'items_id' => $nport['id']
+            ])
+        );
+        $ip = new \IPAddress();
+        $this->assertCount(1, $ip->find(), 'More than one IP found :/');
+        $this->assertTrue(
+            $ip->getFromDBByCrit([
+                'itemtype' => $netname::getType(),
+                'items_id' => $netname->getID()
+            ])
+        );
+        $this->assertSame(4, $ip->fields['version']);
+        $this->assertSame('172.27.45.20', $ip->fields['name']);
+
+        //change IP, and redo inventory
+        $json = json_decode($json_str);
+        $vpn = $json->content->networks[0];
+        $vpn->ipaddress = '172.27.45.19';
+        $json->content->networks[0] = $vpn;
+        $this->doInventory($json);
+        $this->assertTrue($computer->getFromDBByCrit(['name' => 'pc_with_vpn']));
+
+        $nports = $DB->request(
+            [
+                'FROM' => 'glpi_networkports',
+                'WHERE' => [
+                    'itemtype' => get_class($computer),
+                    'items_id' => $computer->getID()
+                ]
+            ]
+        );
+        $this->assertCount(1, $nports);
+        $nport = $nports->current();
+        $this->assertSame('1', $nport['ifinternalstatus']);
+        $this->assertSame('00:09:0f:aa:00:01', $nport['mac']);
+
+        $netname = new \NetworkName();
+        $this->assertTrue(
+            $netname->getFromDBByCrit([
+                'itemtype' => \NetworkPort::getType(),
+                'items_id' => $nport['id']
+            ])
+        );
+        $ip = new \IPAddress();
+        $this->assertCount(1, $ip->find(), 'More than one IP found :/');
+        $this->assertTrue(
+            $ip->getFromDBByCrit([
+                'itemtype' => $netname::getType(),
+                'items_id' => $netname->getID()
+            ])
+        );
+        $this->assertSame(4, $ip->fields['version']);
+        $this->assertSame('172.27.45.19', $ip->fields['name']);
+    }
+
+    public function testChangeIPPartial()
+    {
+        /** @var \DBmysql $DB */
+        global $DB;
+
+        $json_str = <<<JSON
+{
+   "action": "inventory",
+   "content": {
+      "hardware": {
+         "name": "pc_with_vpn",
+         "uuid": "32EED9C2-204C-42A1-A97E-A6EF2CE44B4F"
+      },
+      "networks": [
+         {
+            "description": "Fortinet SSL VPN Virtual Ethernet Adapter",
+            "speed": "100000",
+            "status": "up",
+            "type": "ethernet",
+            "virtualdev": true,
+            "ipaddress": "172.27.45.21",
+            "ipmask": "255.255.255.255",
+            "ipsubnet": "172.27.45.21",
+            "mac": "00:09:0f:aa:00:01"
+         }
+      ],
+      "versionclient": "GLPI-Inventory_v1.11"
+   },
+   "deviceid": "WinDev2404Eval-2024-10-14-15-28-37",
+   "itemtype": "Computer"
+}
+JSON;
+        $json = json_decode($json_str);
+        $computer = new \Computer();
+
+        //initial import
+        $this->doInventory($json);
+        $this->assertTrue($computer->getFromDBByCrit(['name' => 'pc_with_vpn']));
+
+        $nports = $DB->request(
+            [
+                'FROM' => 'glpi_networkports',
+                'WHERE' => [
+                    'itemtype' => get_class($computer),
+                    'items_id' => $computer->getID()
+                ]
+            ]
+        );
+        $this->assertCount(1, $nports);
+
+        $nport = $nports->current();
+        $this->assertSame('1', $nport['ifinternalstatus']);
+        $this->assertSame('00:09:0f:aa:00:01', $nport['mac']);
+
+        $netname = new \NetworkName();
+        $this->assertTrue(
+            $netname->getFromDBByCrit([
+                'itemtype' => \NetworkPort::getType(),
+                'items_id' => $nport['id']
+            ])
+        );
+        $ip = new \IPAddress();
+        $this->assertTrue(
+            $ip->getFromDBByCrit([
+                'itemtype' => $netname::getType(),
+                'items_id' => $netname->getID()
+            ])
+        );
+        $this->assertSame(4, $ip->fields['version']);
+        $this->assertSame('172.27.45.21', $ip->fields['name']);
+
+        //make partial, change IP, and redo inventory
+        $json = json_decode($json_str);
+        $json->partial = true;
+        $vpn = $json->content->networks[0];
+        $vpn->ipaddress = '172.27.45.20';
+        $json->content->networks[0] = $vpn;
+        $this->doInventory($json);
+        $this->assertTrue($computer->getFromDBByCrit(['name' => 'pc_with_vpn']));
+
+        $nports = $DB->request(
+            [
+                'FROM' => 'glpi_networkports',
+                'WHERE' => [
+                    'itemtype' => get_class($computer),
+                    'items_id' => $computer->getID()
+                ]
+            ]
+        );
+        $this->assertCount(1, $nports);
+        $nport = $nports->current();
+        $this->assertSame('1', $nport['ifinternalstatus']);
+        $this->assertSame('00:09:0f:aa:00:01', $nport['mac']);
+
+        $netname = new \NetworkName();
+        $this->assertTrue(
+            $netname->getFromDBByCrit([
+                'itemtype' => \NetworkPort::getType(),
+                'items_id' => $nport['id']
+            ])
+        );
+        $ip = new \IPAddress();
+        $this->assertCount(1, $ip->find(), 'More than one IP found :/');
+        $this->assertTrue(
+            $ip->getFromDBByCrit([
+                'itemtype' => $netname::getType(),
+                'items_id' => $netname->getID()
+            ])
+        );
+        $this->assertSame(4, $ip->fields['version']);
+        $this->assertSame('172.27.45.20', $ip->fields['name']);
+
+        //make partial, change IP, and redo inventory
+        $json = json_decode($json_str);
+        $json->partial = true;
+        $vpn = $json->content->networks[0];
+        $vpn->ipaddress = '172.27.45.19';
+        $json->content->networks[0] = $vpn;
+        $this->doInventory($json);
+        $this->assertTrue($computer->getFromDBByCrit(['name' => 'pc_with_vpn']));
+
+        $nports = $DB->request(
+            [
+                'FROM' => 'glpi_networkports',
+                'WHERE' => [
+                    'itemtype' => get_class($computer),
+                    'items_id' => $computer->getID()
+                ]
+            ]
+        );
+        $this->assertCount(1, $nports);
+        $nport = $nports->current();
+        $this->assertSame('1', $nport['ifinternalstatus']);
+        $this->assertSame('00:09:0f:aa:00:01', $nport['mac']);
+
+        $netname = new \NetworkName();
+        $this->assertTrue(
+            $netname->getFromDBByCrit([
+                'itemtype' => \NetworkPort::getType(),
+                'items_id' => $nport['id']
+            ])
+        );
+        $ip = new \IPAddress();
+        $this->assertCount(1, $ip->find(), 'More than one IP found :/');
+        $this->assertTrue(
+            $ip->getFromDBByCrit([
+                'itemtype' => $netname::getType(),
+                'items_id' => $netname->getID()
+            ])
+        );
+        $this->assertSame(4, $ip->fields['version']);
+        $this->assertSame('172.27.45.19', $ip->fields['name']);
     }
 }

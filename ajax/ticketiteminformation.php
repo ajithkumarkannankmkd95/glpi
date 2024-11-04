@@ -35,7 +35,7 @@
 
 // Direct access to file
 if (strpos($_SERVER['PHP_SELF'], "ticketiteminformation.php")) {
-    /** @var $this \Glpi\Controller\LegacyFileLoadController */
+    /** @var \Glpi\Controller\LegacyFileLoadController $this */
     $this->setAjax();
 
     header("Content-Type: text/html; charset=UTF-8");
@@ -56,7 +56,7 @@ if (
 ) {
    // Security
     if (!class_exists($_POST['itemtype'])) {
-        exit();
+        return;
     }
 
     $days   = 3;

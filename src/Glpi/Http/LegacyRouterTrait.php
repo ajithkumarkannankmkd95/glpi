@@ -35,106 +35,78 @@
 namespace Glpi\Http;
 
 use Symfony\Component\HttpFoundation\Request;
+use Toolbox;
 
 trait LegacyRouterTrait
 {
+    /**
+     * GLPI root directory.
+     */
+    protected string $glpi_root;
+
+    /**
+     * GLPI plugins directories.
+     * @var string[]
+     */
+    protected array $plugin_directories;
+
     protected function isTargetAPhpScript(string $path): bool
     {
         // Check extension on path directly to be able to recognize that target is supposed to be a PHP
         // script even if it not exists. This is usefull to send most appropriate response code (i.e. 403 VS 404).
-        return preg_match('/^php\d*$/', pathinfo($path, PATHINFO_EXTENSION)) === 1;
+        return preg_match('/^php\d*$/i', pathinfo($path, PATHINFO_EXTENSION)) === 1;
     }
 
-    protected function isPathAllowed(string $path): bool
+    protected function isHiddenFile(string $path): bool
     {
-        // Check global exclusion patterns.
-        $excluded_path_patterns = [
-            // hidden file or `.`/`..` path traversal component
-            '\/\.',
-            // config files
-            '^\/config\/',
-            // data files
-            '^\/files\/',
-            // tests files (should anyway not be present in dist)
-            '^\/tests\/',
-            // old-styles CLI tools (should anyway not be present in dist)
-            '^\/tools\/',
-            // `node_modules` and `vendor`, in GLPI root directory or in any plugin root directory
-            '^(\/(marketplace|plugins)\/[^\/]+)?\/(node_modules|vendor)\/',
-        ];
+        return preg_match('#/\.#i', $path) === 1;
+    }
 
-        if (preg_match('/(' . implode('|', $excluded_path_patterns) . ')/i', $path) === 1) {
-            return false;
+    protected function getTargetFile(string $path): ?string
+    {
+        $path_matches = [];
+        if (preg_match('#^/plugins/(?<plugin_key>[^\/]+)(?<plugin_resource>/.+)$#', $path, $path_matches) === 1) {
+            $plugin_dir = null;
+            foreach ($this->plugin_directories as $plugins_directory) {
+                $to_check = $plugins_directory . DIRECTORY_SEPARATOR . $path_matches['plugin_key'];
+                if (is_dir($to_check)) {
+                    $plugin_dir = $to_check;
+                    break;
+                }
+            }
+            if ($plugin_dir === null) {
+                // The requested plugin does not exist, the target file does not exists.
+                return null;
+            }
+
+            $relative_path = $path_matches['plugin_resource'];
+            if (
+                $this->isTargetAPhpScript($path)
+                && \preg_match('#^/(ajax|front|report)/#', $relative_path)
+                && \is_file($plugin_dir . $relative_path)
+            ) {
+                // legacy scripts located in the `/ajax`, `/front` or `/report` directory
+                $filename = $plugin_dir . $relative_path;
+            } else {
+                // preprend `/public` to expose the public resources only
+                $filename = $plugin_dir . '/public' . $relative_path;
+            }
+        } elseif (
+            (
+                // legacy scripts located in the `/ajax`, `/front` or `/install` directory
+                (\preg_match('#^(/ajax/|/front/|/install/(install|update)\.php)#', $path) && $this->isTargetAPhpScript($path))
+                // JS scripts located in the `/js` directory
+                || preg_match('#^/js/.+\.js$#', $path)
+            )
+            && is_file($this->glpi_root . $path)
+        ) {
+            $filename = $this->glpi_root . $path;
+        } else {
+            // preprend `/public` to expose the public resources only
+            $filename = $this->glpi_root . '/public' . $path;
         }
 
-        // Check rules related to PHP files.
-        // Check extension on path even if file not exists, to be able to send a 403 error even if file not exists.
-        if ($this->isTargetAPhpScript($path)) {
-            $glpi_path_patterns = [
-                // `/ajax/` scripts
-                'ajax\/',
-                // `/front/` scripts
-                'front\/',
-                // install/update scripts
-                'install\/(install|update)\.php$',
-                // endpoints located on root directory
-                '(index|status)\.php',
-            ];
-
-            $plugins_path_patterns = [
-                // `/ajax/` scripts
-                'ajax\/',
-                // `/front/` scripts
-                'front\/',
-                // `/public/` scripts
-                'public\/',
-                // Any `index.php` script
-                '(.+\/)?index\.php',
-                // PHP scripts located in root directory, except `setup.php` and `hook.php`
-                '(?!setup\.php|hook\.php)[^\/]+\.php',
-                // dynamic CSS and JS files
-                '.+\.(css|js)\.php',
-                // `reports` plugin specific URLs (used by many plugins)
-                'report\/',
-            ];
-
-            $allowed_path_pattern = '/^'
-                . '('
-                . sprintf('\/(%s)', implode('|', $glpi_path_patterns))
-                . '|'
-                . sprintf('\/(marketplace|plugins)\/[^\/]+\/(%s)', implode('|', $plugins_path_patterns))
-                . ')'
-                . '/';
-            return preg_match($allowed_path_pattern, $path) === 1;
-        }
-
-        // Check rules related to non-PHP files.
-        $allowed_path_pattern = [
-            // files in `/public` directories
-            '^(\/(marketplace|plugins)\/[^\/]+)?\/public\/',
-            // static pages
-            '\.html?$',
-            // JS/CSS files
-            '\.(js|css)$',
-            // JS/CSS files sourcemaps used in dev env (it is to the publisher responsibility to remove them in dist packages)
-            '\.(js|css)\.map$',
-            // Vue components
-            '\.vue$',
-            // images
-            '\.(gif|jpe?g|png|svg)$',
-            // audios
-            '\.(mp3|ogg|wav)$',
-            // videos
-            '\.(mp4|ogm|ogv|webm)$',
-            // webfonts
-            '\.(eot|otf|ttf|woff2?)$',
-            // JSON files in plugins (except `composer.json`, `package.json` and `package-lock.json` located on root)
-            '^\/(marketplace|plugins)\/[^\/]+\/(?!composer\.json|package\.json|package-lock\.json).+\.json$',
-            // favicon
-            '(^|\/)favicon\.ico$',
-        ];
-
-        return preg_match('/(' . implode('|', $allowed_path_pattern) . ')/i', $path) === 1;
+        return \is_file($filename) ? $filename : null;
     }
 
     protected function extractPathAndPrefix(Request $request): array
@@ -165,6 +137,48 @@ trait LegacyRouterTrait
             '',
             parse_url($request_uri, PHP_URL_PATH)
         );
+
+        // Normalize plugins paths.
+        // All plugins resources should now be accessed using the `/plugins/${plugin_key}/${resource_path}`.
+        if (str_starts_with($path, '/marketplace/')) {
+            // /!\ `/marketplace/` URLs were massively used prior to GLPI 11.0.
+            //
+            // To not break URLs than can be found in the wild (in e-mail, forums, external apps configuration, ...),
+            // please do not remove this behaviour before, at least, 2030 (about 5 years after GLPI 11.0.0 release).
+            Toolbox::deprecated('Accessing the plugins resources from the `/marketplace/` path is deprecated. Use the `/plugins/` path instead.');
+            $path = preg_replace(
+                '#^/marketplace/#',
+                '/plugins/',
+                parse_url($request_uri, PHP_URL_PATH)
+            );
+        }
+
+        // Parse URI to find requested script and PathInfo
+        $init_path = $path;
+        $path = '';
+
+        $slash_pos = 0;
+        while ($slash_pos !== false && ($dot_pos = strpos($init_path, '.', $slash_pos)) !== false) {
+            $slash_pos = strpos($init_path, '/', $dot_pos);
+            $filepath = substr($init_path, 0, $slash_pos !== false ? $slash_pos : strlen($init_path));
+            if ($this->getTargetFile($filepath) !== null) {
+                $path = $filepath;
+                break;
+            }
+        }
+
+        if ($path === '') {
+            // Fallback to requested URI
+            $path = $init_path;
+
+            // Clean trailing `/`.
+            $path = rtrim($path, '/');
+
+            // If URI matches a directory path, consider `index.php` is the requested script.
+            if ($this->getTargetFile($path . '/index.php') !== null) {
+                $path .= '/index.php';
+            }
+        }
 
         return [$uri_prefix, $path];
     }

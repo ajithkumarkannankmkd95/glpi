@@ -38,22 +38,24 @@
  */
 global $CFG_GLPI;
 
-/** @var $this \Glpi\Controller\LegacyFileLoadController */
+/** @var \Glpi\Controller\LegacyFileLoadController $this */
 $this->setAjax();
 
 header("Content-Type: text/html; charset=UTF-8");
 Html::header_nocache();
 
+// Session check is disabled for this script (see `\Glpi\Http\Firewall::computeStrategyForCoreLegacyScript()`)
+// to be able to adapt the checks depending on the request.
 if (!($CFG_GLPI["use_public_faq"] && str_ends_with($_GET["_target"], '/front/helpdesk.faq.php'))) {
     Session::checkLoginUser();
 }
 
 if (!isset($_GET['_glpi_tab'])) {
-    exit();
+    return;
 }
 
 if (!isset($_GET['_itemtype']) || empty($_GET['_itemtype'])) {
-    exit();
+    return;
 }
 
 if (!isset($_GET["sort"])) {
@@ -77,14 +79,14 @@ if ($item = getItemForItemtype($_GET['_itemtype'])) {
        // No id if ruleCollection but check right
         if ($item instanceof RuleCollection) {
             if (!$item->canList()) {
-                exit();
+                return;
             }
         } else if (!isset($_GET["id"]) || $item->isNewID($_GET["id"])) {
             if (!$item->can(-1, CREATE, $_GET)) {
-                exit();
+                return;
             }
         } else if (!$item->can($_GET["id"], READ)) {
-            exit();
+            return;
         }
     }
 }

@@ -107,7 +107,8 @@ final class Asset_PeripheralAsset extends CommonDBRelation
 
         $asset = self::getItemFromArray(self::$itemtype_1, self::$items_id_1, $input);
         if (
-            self::isAlreadyConnected($asset, $peripheral)
+            !($asset instanceof CommonDBTM)
+            || self::isAlreadyConnected($asset, $peripheral)
             || !(in_array($asset::class, self::getPeripheralHostItemtypes(), true))
         ) {
            // no duplicates
@@ -404,8 +405,8 @@ TWIG, $twig_params);
                 $linkname = sprintf(__('%1$s (%2$s)'), $linkname, $data["id"]);
             }
             $link = $itemtype::getFormURLWithID($data["id"]);
-            $label = sprintf('<i class="%s"></i> %s', htmlspecialchars($itemtype::getIcon()), htmlspecialchars($linkname));
-            $name = '<a href="' . htmlspecialchars($link) . '">' . $label . '</a>';
+            $label = sprintf('<i class="%s"></i> %s', htmlescape($itemtype::getIcon()), htmlescape($linkname));
+            $name = '<a href="' . htmlescape($link) . '">' . $label . '</a>';
             $entry['name'] = $name;
 
             if (!isset($entity_cache[$data['entities_id']])) {
@@ -561,7 +562,7 @@ TWIG, $twig_params);
                 $linkname = sprintf(__('%1$s (%2$s)'), $linkname, $data["id"]);
             }
             $link = $itemtype::getFormURLWithID($data["id"]);
-            $name = '<a href="' . htmlspecialchars($link) . '">' . htmlspecialchars($linkname) . '</a>';
+            $name = '<a href="' . htmlescape($link) . '">' . htmlescape($linkname) . '</a>';
             $entry['name'] = $name;
 
             if (!isset($entity_cache[$data['entities_id']])) {

@@ -236,8 +236,8 @@ final class DbUtils
         }
 
         // handle PHPUnit mocks
-        if (str_starts_with($table, 'mock_')) {
-            $table = preg_replace('/^mock_(.+)_.+$/', '$1', $table);
+        if (str_starts_with($table, 'mockobject_')) {
+            $table = preg_replace('/^mockobject_(.+)_.+$/', '$1', $table);
         }
         // handle aoutm mocks
         $table = str_replace(['mock\\', '\\'], ['', '_'], $table);
@@ -367,7 +367,7 @@ final class DbUtils
      *
      * @return string
      */
-    public function fixItemtypeCase(string $itemtype, $root_dir = GLPI_ROOT)
+    public function fixItemtypeCase(string $itemtype, $root_dir = GLPI_ROOT, array $plugins_dirs = PLUGINS_DIRECTORIES)
     {
         /** @var \Psr\SimpleCache\CacheInterface $GLPI_CACHE */
         global $GLPI_CACHE;
@@ -392,38 +392,46 @@ final class DbUtils
             $context = strtolower($plugin_matches['plugin']);
         }
 
+        // Our cache key must take into account the requested directories
+        if ($context == 'glpi-core') {
+            // Only $root_dir will be used, we don't need to take plugins directories into account
+            // The "root=" prefix make sure we don't have any collision if $root_dir and $plugins_dirs are equals
+            $unique_key = crc32($context . 'root=' . $root_dir);
+        } else {
+            // Only $plugins_dirs will be used, we don't need to take the root dir
+            // The "plugins=" prefix make sure we don't have any collision if $root_dir and $plugins_dirs are equals
+            $unique_key = crc32($context . 'plugins=' . implode(',', $plugins_dirs));
+        }
+
         $namespace      = $context === 'glpi-core' ? NS_GLPI : NS_PLUG . ucfirst($context) . '\\';
         $uses_namespace = preg_match('/^(' . preg_quote($namespace, '/') . ')/i', $itemtype);
 
         $replacements = [];
         if ($context !== 'glpi-core') {
-            // Strip the `GlpiPlugin\\` prefix that is not present in plugins classes path
-            $replacements[NS_PLUG] = '';
+            // Strip the `GlpiPlugin\\MyPlugin` prefix that is not present in plugins classes path
+            $replacements[$namespace] = '';
         }
         $replacements['\\'] = DIRECTORY_SEPARATOR;
         $expected_lc_path = str_ireplace(array_keys($replacements), array_values($replacements), strtolower($itemtype) . '.php');
 
-        $cache_key = sprintf('itemtype-case-mapping-%s', $context);
+        $cache_key = sprintf('itemtype-case-mapping-%s', $unique_key);
 
-        if (!array_key_exists($context, $mapping)) {
+        if (!array_key_exists($unique_key, $mapping)) {
             // Initialize mapping from persistent cache if it has not been done yet in current request
-            $mapping[$context] = $GLPI_CACHE->get($cache_key);
+            $mapping[$unique_key] = $GLPI_CACHE->get($cache_key);
         }
 
-        if ($mapping[$context] !== null && array_key_exists($expected_lc_path, $mapping[$context])) {
+        if ($mapping[$unique_key] !== null && array_key_exists($expected_lc_path, $mapping[$unique_key])) {
             // Return known value, if any
-            return ($context !== 'glpi-core' && $uses_namespace ? NS_PLUG : '') . $mapping[$context][$expected_lc_path];
+            return ($context !== 'glpi-core' && $uses_namespace ? $namespace : '') . $mapping[$unique_key][$expected_lc_path];
         }
 
         if (
-            !defined('TU_USER')
-            && (
-                (
-                    $mapping[$context] !== null
+            (
+                $mapping[$unique_key] !== null
                 && !in_array(GLPI_ENVIRONMENT_TYPE, [GLPI::ENV_DEVELOPMENT, GLPI::ENV_TESTING])
-                )
-                || in_array($context, $already_scanned)
             )
+            || in_array($unique_key, $already_scanned)
         ) {
             // Do not scan class files if mapping was already cached, unless current env is development/testing.
             //
@@ -437,37 +445,47 @@ final class DbUtils
         }
 
         // Fetch filenames from "src" directory of context (GLPI core or given plugin).
-        $mapping[$context] = [];
-        $srcdir = $root_dir . ($context === 'glpi-core' ? '' : '/plugins/' . $context) . '/src';
-        if (is_dir($srcdir)) {
-            $files_iterator = new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator($srcdir),
-                RecursiveIteratorIterator::SELF_FIRST
-            );
-            /** @var SplFileInfo $file */
-            foreach ($files_iterator as $file) {
-                if (!$file->isReadable() || !$file->isFile() || '.php' === !$file->getExtension()) {
-                    continue;
-                }
-                $relative_path = str_replace($srcdir . DIRECTORY_SEPARATOR, '', $file->getPathname());
+        $mapping[$unique_key] = [];
 
-                // Store entry into mapping:
-                // - key is the lowercased filepath;
-                // - value is the classname with correct case.
-                $mapping[$context][strtolower($relative_path)] = str_replace(
-                    [DIRECTORY_SEPARATOR, '.php'],
-                    ['\\',                ''],
-                    $relative_path
+        $srcdirs = [];
+        if ($context === 'glpi-core') {
+            $srcdirs[] = $root_dir . '/src';
+        } else {
+            foreach ($plugins_dirs as $plugins_dir) {
+                $srcdirs[] = $plugins_dir . '/' . $context . '/src';
+            }
+        }
+        foreach ($srcdirs as $srcdir) {
+            if (is_dir($srcdir)) {
+                $files_iterator = new RecursiveIteratorIterator(
+                    new RecursiveDirectoryIterator($srcdir),
+                    RecursiveIteratorIterator::SELF_FIRST
                 );
+                /** @var SplFileInfo $file */
+                foreach ($files_iterator as $file) {
+                    if (!$file->isReadable() || !$file->isFile() || '.php' === !$file->getExtension()) {
+                        continue;
+                    }
+                    $relative_path = str_replace($srcdir . DIRECTORY_SEPARATOR, '', $file->getPathname());
+
+                    // Store entry into mapping:
+                    // - key is the lowercased filepath;
+                    // - value is the classname with correct case.
+                    $mapping[$unique_key][strtolower($relative_path)] = str_replace(
+                        [DIRECTORY_SEPARATOR, '.php'],
+                        ['\\',                ''],
+                        $relative_path
+                    );
+                }
             }
         }
 
-        $already_scanned[] = $context;
+        $already_scanned[] = $unique_key;
 
-        $GLPI_CACHE->set($cache_key, $mapping[$context]);
+        $GLPI_CACHE->set($cache_key, $mapping[$unique_key]);
 
-        return array_key_exists($expected_lc_path, $mapping[$context])
-            ? ($context !== 'glpi-core' && $uses_namespace ? NS_PLUG : '') . $mapping[$context][$expected_lc_path]
+        return array_key_exists($expected_lc_path, $mapping[$unique_key])
+            ? ($context !== 'glpi-core' && $uses_namespace ? $namespace : '') . $mapping[$unique_key][$expected_lc_path]
             : $itemtype;
     }
 
@@ -529,7 +547,7 @@ final class DbUtils
      * Count the number of elements in a table.
      *
      * @param string|array   $table     table name(s)
-     * @param ?string|?array $condition array of criteria
+     * @param string|array   $condition array of criteria
      *
      * @return integer Number of elements in table
      */
@@ -566,7 +584,7 @@ final class DbUtils
      *
      * @param string|array   $table     table name(s)
      * @param string         $field     field name
-     * @param ?string|?array $condition array of criteria
+     * @param array|string|null          $condition array of criteria
      *
      * @return int nb of elements in table
      */
@@ -638,7 +656,7 @@ final class DbUtils
      * CAUTION TO USE ONLY FOR SMALL TABLES OR USING A STRICT CONDITION
      *
      * @param string         $table    Table name
-     * @param ?string|?array $criteria Request criteria
+     * @param array|string|null          $criteria Request criteria
      * @param boolean        $usecache Use cache (false by default)
      * @param string         $order    Result order (default '')
      *
@@ -1372,17 +1390,21 @@ final class DbUtils
      * @return string completename of the element
      *
      * @see DbUtils::getTreeLeafValueName
+     *
+     * @since 11.0.0 Usage of the `$withcomment` parameter is deprecated.
      */
     public function getTreeValueCompleteName($table, $ID, $withcomment = false, $translate = true, $tooltip = true, string $default = '&nbsp;')
     {
+        if ($withcomment) {
+            Toolbox::deprecated('Usage of the `$withcomment` parameter is deprecated. Use `Dropdown::getDropdownComments()` instead.');
+        }
+
         /** @var \DBmysql $DB */
         global $DB;
 
         $name    = "";
-        $comment = "";
 
         $SELECTNAME    = new QueryExpression("'' AS " . $DB->quoteName('transname'));
-        $SELECTCOMMENT = new QueryExpression("'' AS " . $DB->quoteName('transcomment'));
         $JOIN          = [];
         $JOINS         = [];
         if ($translate) {
@@ -1401,21 +1423,6 @@ final class DbUtils
                     ]
                 ];
             }
-            if (Session::haveTranslations($this->getItemTypeForTable($table), 'comment')) {
-                $SELECTCOMMENT = 'namec.value AS transcomment';
-                $JOINS['glpi_dropdowntranslations AS namec'] = [
-                    'ON' => [
-                        'namec'  => 'items_id',
-                        $table   => 'id', [
-                            'AND' => [
-                                'namec.itemtype'  => $this->getItemTypeForTable($table),
-                                'namec.language'  => $_SESSION['glpilanguage'],
-                                'namec.field'     => 'comment'
-                            ]
-                        ]
-                    ]
-                ];
-            }
 
             if (count($JOINS)) {
                 $JOIN = ['LEFT JOIN' => $JOINS];
@@ -1427,7 +1434,6 @@ final class DbUtils
                 "$table.completename",
                 "$table.comment",
                 $SELECTNAME,
-                $SELECTCOMMENT
             ],
             'FROM'   => $table,
             'WHERE'  => ["$table.id" => $ID]
@@ -1457,56 +1463,15 @@ final class DbUtils
                 $name = $result['completename'];
             }
 
-            if ($tooltip) {
-                $comment  = sprintf(
-                    __('%1$s: %2$s') . "<br>",
-                    "<span class='b'>" . __('Complete name') . "</span>",
-                    htmlspecialchars($name)
-                );
-                if ($table == Location::getTable()) {
-                    $acomment = '';
-                    $address = $result['address'];
-                    $town    = $result['town'];
-                    $country = $result['country'];
-                    $code    = $result['code'];
-                    $alias   = $result['alias'];
-                    if (!empty($alias)) {
-                        $name = $alias;
-                        $comment .= "<span class='b'>" . __('Alias:') . "</span> " . $alias . "<br/>";
-                    }
-                    if (!empty($code)) {
-                        $name .= ' - ' . $code;
-                        $comment .= "<span class='b'>" . __('Code:') . "</span> " . $code . "<br/>";
-                    }
-                    if (!empty($address)) {
-                        $acomment .= $address;
-                    }
-                    if (
-                        !empty($address) &&
-                        (!empty($town) || !empty($country))
-                    ) {
-                        $acomment .= '<br/>';
-                    }
-                    if (!empty($town)) {
-                        $acomment .= $town;
-                    }
-                    if (!empty($country)) {
-                        if (!empty($town)) {
-                            $acomment .= ' - ';
-                        }
-                        $acomment .= $country;
-                    }
-                    if (trim($acomment != '')) {
-                        $comment .= "<span class='b'>&nbsp;" . __('Address:') . "</span> " . $acomment . "<br/>";
-                    }
+            if ($table == Location::getTable()) {
+                $code    = $result['code'];
+                $alias   = $result['alias'];
+                if (!empty($alias)) {
+                    $name = $alias;
                 }
-                $comment .= "<span class='b'>&nbsp;" . __('Comments') . "&nbsp;</span>";
-            }
-            $transcomment = $result['transcomment'];
-            if ($translate && !empty($transcomment)) {
-                $comment .= nl2br($transcomment);
-            } else if (!empty($result['comment'])) {
-                $comment .= nl2br($result['comment']);
+                if (!empty($code)) {
+                    $name .= ' - ' . $code;
+                }
             }
         }
 
@@ -1517,7 +1482,7 @@ final class DbUtils
         if ($withcomment) {
             return [
                 'name'      => $name,
-                'comment'   => $comment
+                'comment'   => Dropdown::getDropdownComments((string) $table, (int) $ID, (bool) $translate, (bool) $tooltip),
             ];
         }
         return $name;
@@ -1680,20 +1645,32 @@ final class DbUtils
 
 
     /**
-     * Format a user name
+     * Format a user name.
      *
-     * @param integer $ID           ID of the user.
-     * @param string|null  $login        login of the user
-     * @param string|null  $realname     realname of the user
-     * @param string|null  $firstname    firstname of the user
-     * @param integer $link         include link (only if $link==1) (default =0)
-     * @param integer $cut          limit string length (0 = no limit) (default =0)
-     * @param boolean $force_config force order and id_visible to use common config (false by default)
+     * @param integer       $ID           ID of the user.
+     * @param string|null   $login        login of the user
+     * @param string|null   $realname     realname of the user
+     * @param string|null   $firstname    firstname of the user
+     * @param integer       $link         include link
+     * @param integer       $cut          IGNORED PARAMETER
+     * @param boolean       $force_config force order and id_visible to use common config
      *
-     * @return string formatted username
+     * @return string
+     *
+     * @since 11.0 `$link` parameter is deprecated
+     * @since 11.0 `$cut` parameter is ignored
      */
-    public function formatUserName($ID, $login, $realname, $firstname, $link = 1, $cut = 0, $force_config = false)
+    public function formatUserName($ID, $login, $realname, $firstname, $link = 0, $cut = 0, $force_config = false)
     {
+        if ((bool) $cut) {
+            trigger_error('`$cut` parameter is now ignored.', E_USER_WARNING);
+        }
+
+        if ((bool) $link) {
+            Toolbox::deprecated('`$link` parameter is deprecated. Use `formatUserLink()` instead.');
+            return $this->formatUserLink($ID, $login, $realname, $firstname);
+        }
+
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
@@ -1735,21 +1712,33 @@ final class DbUtils
             $formatted = sprintf(__('%1$s (%2$s)'), $formatted, $ID);
         }
 
-        $username = $formatted;
+        return $formatted;
+    }
 
-        if (
-            ($link == 1)
-            && ($ID > 0)
-        ) {
-            $username = sprintf(
-                '<a title="%s" href="%s">%s</a>',
-                htmlspecialchars($formatted),
-                User::getFormURLWithID($ID),
-                htmlspecialchars($formatted)
-            );
+    /**
+     * Format a user link.
+     *
+     * @param integer       $id           ID of the user.
+     * @param string|null   $login        login of the user
+     * @param string|null   $realname     realname of the user
+     * @param string|null   $firstname    firstname of the user
+     *
+     * @return string
+     */
+    public function formatUserLink(int $id, ?string $login, ?string $realname, ?string $firstname): string
+    {
+        $username = $this->formatUserName($id, $login, $realname, $firstname);
+
+        if ($id <= 0 || !User::canView()) {
+            return htmlescape($username);
         }
 
-        return $username;
+        return sprintf(
+            '<a title="%s" href="%s">%s</a>',
+            htmlescape($username),
+            User::getFormURLWithID($id),
+            htmlescape($username)
+        );
     }
 
 
@@ -1762,102 +1751,73 @@ final class DbUtils
      * @param $disable_anon   bool  disable anonymization of username.
      *
      * @return string[]|string username string (realname if not empty and name if realname is empty).
+     *
+     * @since 11.0 `$link` parameter is deprecated.
      */
     public function getUserName($ID, $link = 0, $disable_anon = false)
     {
         /** @var \DBmysql $DB */
         global $DB;
 
-        $user = "";
+        $username   = "";
+        $user       = new User();
+        $valid_user = false;
+        $anon_name  = null;
+
+        if ($ID === 'myself') {
+            $username = __('Myself');
+        } else if ($ID === 'requester_manager') {
+            $username = __("Requester's manager");
+        } else if ($ID) {
+            $anon_name = !$disable_anon && $ID != ($_SESSION['glpiID'] ?? 0) && Session::getCurrentInterface() == 'helpdesk' ? User::getAnonymizedNameForUser($ID) : null;
+            if ($anon_name !== null) {
+                $username = $anon_name;
+            } elseif ($valid_user = $user->getFromDB($ID)) {
+                $username = $user->getName();
+            }
+        }
+
+        if ($link == 1) {
+            Toolbox::deprecated('Usage of `$link` parameter is deprecated. Use `getUserLink()` instead.');
+            return $valid_user
+                ? sprintf('<a title="%s" href="%s">%s</a>', htmlescape($username), User::getFormURLWithID($ID), htmlescape($username))
+                : htmlescape($username);
+        }
+
         if ($link == 2) {
-            $user = ["name"    => "",
-                "link"    => "",
-                "comment" => ""
+            Toolbox::deprecated('Usage of `$link` parameter is deprecated. Use `User::getInforCard()` instead.');
+
+            return [
+                'name'    => $username,
+                'link'    => $valid_user ? $user->getLinkUrl() : '',
+                'comment' => $valid_user ? $user->getInfoCard() : '',
             ];
         }
 
-        if ($ID === 'myself') {
-            $name = __('Myself');
-            if (isset($user['name'])) {
-                $user['name'] = $name;
-            } else {
-                $user = $name;
-            }
-        } else if ($ID === 'requester_manager') {
-            $name = __("Requester's manager");
-            if (isset($user['name'])) {
-                $user['name'] = $name;
-            } else {
-                $user = $name;
-            }
-        } else if ($ID) {
-            $iterator = $DB->request([
-                'FROM' => 'glpi_users',
-                'WHERE' => ['id' => $ID]
-            ]);
+        return $username;
+    }
 
-            if ($link == 2) {
-                $user = ["name"    => "",
-                    "comment" => "",
-                    "link"    => ""
-                ];
-            }
+    /**
+     * Get link of the given user.
+     *
+     * @param int $id
+     *
+     * @return string
+     */
+    public function getUserLink(int $id): string
+    {
+        $username = $this->getUserName($id);
 
-            if (count($iterator) == 1) {
-                $data     = $iterator->current();
-
-                $anon_name = !$disable_anon && $ID != ($_SESSION['glpiID'] ?? 0) && Session::getCurrentInterface() == 'helpdesk' ? User::getAnonymizedNameForUser($ID) : null;
-                if ($anon_name !== null) {
-                    $username = $anon_name;
-                } else {
-                    $username = $this->formatUserName(
-                        $data["id"],
-                        $data["name"],
-                        $data["realname"],
-                        $data["firstname"],
-                        $link
-                    );
-                }
-
-                if ($link == 2) {
-                    $user["name"]    = $username;
-                    $user["link"]    = User::getFormURLWithID($ID);
-                    $user['comment'] = '';
-
-                    $user_params = [
-                        'id'                 => $ID,
-                        'user_name'          => $username,
-                    ];
-
-                    if ($anon_name === null) {
-                        $user_params = array_merge($user_params, [
-                            'email'               => UserEmail::getDefaultForUser($ID),
-                            'phone'               => $data["phone"],
-                            'phone2'              => $data["phone2"],
-                            'mobile'              => $data["mobile"],
-                            'locations_id'        => $data['locations_id'],
-                            'usertitles_id'       => $data['usertitles_id'],
-                            'usercategories_id'   => $data['usercategories_id'],
-                            'registration_number' => $data['registration_number'],
-                        ]);
-
-                        if (Session::haveRight('user', READ)) {
-                             $user_params['login'] = $data['name'];
-                        }
-                        if (!empty($data["groups_id"])) {
-                            $user_params['groups_id'] = $data["groups_id"];
-                        }
-                        $user['comment'] = TemplateRenderer::getInstance()->render('components/user/info_card.html.twig', [
-                            'user'                 => $user_params,
-                            'enable_anonymization' => Session::getCurrentInterface() == 'helpdesk',
-                        ]);
-                    }
-                } else {
-                    $user = $username;
-                }
-            }
+        if (!is_int($id) || $id <= 0 || !User::canView()) {
+            return htmlescape($username);
         }
-        return $user;
+
+        return sprintf(
+            '<a title="%s" href="%s">%s</a>',
+            htmlescape($username),
+            User::getFormURLWithID($id),
+            htmlescape($username)
+        );
     }
 
     /**
@@ -2025,22 +1985,6 @@ final class DbUtils
         );
 
         return $objectName;
-    }
-
-    /**
-     * Close active DB connections
-     *
-     * @return void
-     */
-    public function closeDBConnections()
-    {
-        /** @var \DBmysql $DB */
-        global $DB;
-
-       // Case of not init $DB object
-        if ($DB !== null && method_exists($DB, "close")) {
-            $DB->close();
-        }
     }
 
     /**

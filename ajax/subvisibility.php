@@ -35,14 +35,12 @@
 
 // Direct access to file
 if (strpos($_SERVER['PHP_SELF'], "subvisibility.php")) {
-    /** @var $this \Glpi\Controller\LegacyFileLoadController */
+    /** @var \Glpi\Controller\LegacyFileLoadController $this */
     $this->setAjax();
 
     header("Content-Type: text/html; charset=UTF-8");
     Html::header_nocache();
 }
-
-Session::checkLoginUser();
 
 if (!empty($_POST['type']) && isset($_POST['items_id']) && ($_POST['items_id'] > 0)) {
     $prefix = '';
@@ -66,7 +64,7 @@ if (!empty($_POST['type']) && isset($_POST['items_id']) && ($_POST['items_id'] >
                 $params['entity_sons'] = $_POST['is_recursive'] ?? false;
             }
             echo "<table class='tab_format'><tr><td>";
-            echo Entity::getTypeName(1);
+            echo htmlescape(Entity::getTypeName(1));
             echo "</td><td>";
             Entity::dropdown($params);
             echo "</td><td>";

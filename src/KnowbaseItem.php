@@ -45,6 +45,7 @@ use Glpi\Search\SearchEngine;
  **/
 class KnowbaseItem extends CommonDBVisible implements ExtraVisibilityCriteria
 {
+    use Glpi\Features\Clonable;
     use Glpi\Features\TreeBrowse;
 
     public static $browse_default = true;
@@ -61,6 +62,19 @@ class KnowbaseItem extends CommonDBVisible implements ExtraVisibilityCriteria
 
     public static $rightname   = 'knowbase';
 
+    public function getCloneRelations(): array
+    {
+        return [
+            Entity_KnowbaseItem::class,
+            Group_KnowbaseItem::class,
+            KnowbaseItem_Profile::class,
+            KnowbaseItem_User::class,
+            Document_Item::class,
+            Infocom::class,
+            KnowbaseItem_Item::class,
+            KnowbaseItemTranslation::class,
+        ];
+    }
 
     public static function getTypeName($nb = 0)
     {
@@ -940,10 +954,7 @@ class KnowbaseItem extends CommonDBVisible implements ExtraVisibilityCriteria
 
         $writer_link = '';
         if ($this->fields["users_id"]) {
-            $writer_link = getUserName(
-                $this->fields["users_id"],
-                $linkusers_id ? 1 : 0 // Integer because true may be 2 and getUserName return array
-            );
+            $writer_link = getUserLink($this->fields["users_id"]);
         }
 
         $out = TemplateRenderer::getInstance()->render('pages/tools/kb/article.html.twig', [
@@ -1583,24 +1594,20 @@ TWIG, $twig_params);
                     }
                     echo Search::showItem(
                         $output_type,
-                        "<div class='kb'>$toadd <i class='fa fa-fw $fa_class' title='$fa_title'></i> <a $href>" . Html::resume_text(htmlspecialchars($name, 80)) . "</a></div>
-                                       <div class='kb_resume'>" . Html::resume_text(htmlspecialchars(RichText::getTextFromHtml($answer, false, false, true), 600)) . "</div>",
+                        "<div class='kb'>$toadd <i class='fa fa-fw $fa_class' title='$fa_title'></i> <a $href>" . Html::resume_text($name, 80) . "</a></div>
+                                       <div class='kb_resume'>" . Html::resume_text(RichText::getTextFromHtml($answer, false, false), 600) . "</div>",
                         $item_num,
                         $row_num
                     );
                 } else {
-                    echo Search::showItem($output_type, htmlspecialchars($name), $item_num, $row_num);
-                    echo Search::showItem($output_type, htmlspecialchars(RichText::getTextFromHtml($answer, true, false, true)), $item_num, $row_num);
+                    echo Search::showItem($output_type, htmlescape($name), $item_num, $row_num);
+                    echo Search::showItem($output_type, htmlescape(RichText::getTextFromHtml($answer, true, false, true)), $item_num, $row_num);
                 }
 
-                $showuserlink = 0;
-                if (Session::haveRight('user', READ)) {
-                    $showuserlink = 1;
-                }
                 if ($showwriter) {
                     echo Search::showItem(
                         $output_type,
-                        getUserName($data["users_id"], $showuserlink),
+                        getUserLink($data["users_id"]),
                         $item_num,
                         $row_num
                     );
@@ -1621,9 +1628,9 @@ TWIG, $twig_params);
                         $categories_names[] = "<a class='kb-category'"
                             . " href='$cathref'"
                             . " data-category-id='" . $knowbaseitemcategories_id . "'"
-                            . ">" . htmlspecialchars($fullcategoryname) . '</a>';
+                            . ">" . htmlescape($fullcategoryname) . '</a>';
                     } else {
-                        $categories_names[] = htmlspecialchars($fullcategoryname);
+                        $categories_names[] = htmlescape($fullcategoryname);
                     }
                 }
                 echo Search::showItem($output_type, implode(', ', $categories_names), $item_num, $row_num);
@@ -2095,7 +2102,7 @@ TWIG, $twig_params);
                     $matches[1],
                     $matches[2],
                     Toolbox::slugify($matches[3]),
-                    htmlspecialchars($matches[3]),
+                    htmlescape($matches[3]),
                     '<svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"/></svg>'
                 ],
                 $tpl

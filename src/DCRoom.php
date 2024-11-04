@@ -52,6 +52,11 @@ class DCRoom extends CommonDBTM
         return _n('Server room', 'Server rooms', $nb);
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['management', Datacenter::class, self::class];
+    }
+
     public function defineTabs($options = [])
     {
         $ong = [];
@@ -255,7 +260,6 @@ class DCRoom extends CommonDBTM
 
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
-
         switch ($item::class) {
             case Datacenter::class:
                 $nb = 0;
@@ -273,7 +277,6 @@ class DCRoom extends CommonDBTM
                     $nb,
                     $item::getType()
                 );
-             break;
         }
 
         return '';

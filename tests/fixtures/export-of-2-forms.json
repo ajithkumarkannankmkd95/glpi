@@ -1,0 +1,31 @@
+{
+    "version": 1,
+    "forms": [
+        {
+            "id": 0,
+            "name": "My valid form",
+            "header": "",
+            "entity_name": "E2ETestEntity",
+            "is_recursive": false,
+            "data_requirements": [
+                {
+                    "itemtype": "Entity",
+                    "name": "E2ETestEntity"
+                }
+            ]
+        },
+        {
+            "id": 1,
+            "name": "My invalid form",
+            "header": "",
+            "entity_name": "Missing entity",
+            "is_recursive": false,
+            "data_requirements": [
+                {
+                    "itemtype": "Entity",
+                    "name": "Missing entity"
+                }
+            ]
+        }
+    ]
+}

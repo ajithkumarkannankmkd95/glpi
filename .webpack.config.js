@@ -14,11 +14,11 @@ const scssOutputPath = 'css/lib';
 /*
  * External libraries files build configuration.
  */
-let config = {
+const config = {
     entry: function () {
         // Create an entry per file in lib/bundle directory.
         // Entry name will be name of the file (without ext).
-        let entries = {};
+        const entries = {};
 
         for (const ext of ['.js', '.scss']) {
             const files = globSync(path.resolve(__dirname, 'lib/bundles') + '/!(*.min)' + ext);
@@ -56,6 +56,10 @@ let config = {
                 use: ['script-loader', 'strip-sourcemap-loader'],
             },
             {
+                test: /\.json$/,
+                type: 'json'
+            },
+            {
                 // Test for a polyfill (or any file) and it won't be included in your
                 // bundle
                 test: path.resolve(__dirname, 'node_modules/jquery.fancytree/dist/modules/jquery.fancytree.ui-deps.js'),
@@ -73,7 +77,7 @@ let config = {
                 generator: {
                     filename: function (pathData) {
                         // Keep only relative path
-                        var sanitizedPath = path.relative(__dirname, pathData.filename);
+                        let sanitizedPath = path.relative(__dirname, pathData.filename);
 
                         // Sanitize name
                         sanitizedPath = sanitizedPath.replace(/[^\\/\w-.]/, '');
@@ -81,7 +85,7 @@ let config = {
                         // Remove the first directory (lib, node_modules, ...) and empty parts
                         // and replace directory separator by '/' (windows case)
                         sanitizedPath = sanitizedPath.split(path.sep)
-                            .filter(function (part, index) {
+                            .filter((part, index) => {
                                 return '' != part && index != 0;
                             }).join('/');
 
@@ -116,7 +120,7 @@ let config = {
         new MiniCssExtractPlugin(), // Extract styles into CSS files
         new MonacoWebpackPlugin({
             'languages': ['html', 'javascript', 'typescript', 'json', 'markdown', 'twig', 'css', 'scss', 'shell'],
-            'publicPath': '/public/lib/'
+            'publicPath': '/lib/'
         }),
     ],
     resolve: {
@@ -143,7 +147,7 @@ let config = {
 };
 
 // Copy raw JS and SCSS files
-var filesToCopy = [
+const filesToCopy = [
     // JS files
     {
         package: '@fullcalendar/core',
@@ -194,17 +198,25 @@ var filesToCopy = [
     }
 ];
 
-let copyPatterns = [];
+const copyPatterns = [];
+
+// See https://github.com/glpi-project/glpi/issues/17745
+copyPatterns.push({
+    from:    path.resolve(__dirname, 'node_modules/flatpickr/dist/l10n/cat.js'),
+    to:      path.resolve(__dirname, libOutputPath + '/flatpickr/l10n/ca.js'),
+    toType:  'file',
+});
+
 for (let s = 0; s < filesToCopy.length; s++) {
-    let specs = filesToCopy[s];
-    let to = (specs.to || libOutputPath) + '/' + specs.package.replace(/^@/, ''); // remove leading @ in case of prefixed package
+    const specs = filesToCopy[s];
+    const to = (specs.to || libOutputPath) + '/' + specs.package.replace(/^@/, ''); // remove leading @ in case of prefixed package
 
     let context = 'node_modules/' + specs.package;
     if (Object.prototype.hasOwnProperty.call(specs, 'context')) {
         context += '/' + specs.context;
     }
 
-    let copyParams = {
+    const copyParams = {
         context: path.resolve(__dirname, context),
         from:    specs.from,
         to:      path.resolve(__dirname, to),

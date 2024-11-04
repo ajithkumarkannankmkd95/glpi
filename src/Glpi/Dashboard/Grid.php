@@ -36,14 +36,15 @@
 namespace Glpi\Dashboard;
 
 use Config;
-use DateInterval;
 use Dropdown;
 use GLPI;
 use Glpi\Application\ErrorHandler;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Debug\Profiler;
+use Glpi\Exception\Http\AccessDeniedHttpException;
 use Glpi\Plugin\Hooks;
 use Html;
+use Item_Devices;
 use Plugin;
 use Ramsey\Uuid\Uuid;
 use Reminder;
@@ -466,7 +467,13 @@ HTML;
         ]);
         $js = <<<JAVASCRIPT
       $(function () {
-         new GLPIDashboard({$js_params})
+        // Sometimes GLPIDashboard is undefined and it messes with e2e tests
+        // by throwing a blocking error
+        // TODO: investigate why this happens
+        if (typeof GLPIDashboard === 'undefined') {
+          return;
+        }
+        new GLPIDashboard({$js_params})
       });
 JAVASCRIPT;
         $js = Html::scriptBlock($js);
@@ -506,8 +513,7 @@ JAVASCRIPT;
         $params = array_merge($defaults, $params);
 
         if (!self::checkToken($params)) {
-            Html::displayRightError();
-            exit;
+            throw new AccessDeniedHttpException();
         }
 
         self::$embed = true;
@@ -652,7 +658,7 @@ HTML;
         $edit_label    = __("Edit this card");
         $delete_label  = __("Delete this card");
 
-        $gridstack_id = htmlspecialchars($gridstack_id);
+        $gridstack_id = htmlescape($gridstack_id);
 
         $this->items[] = <<<HTML
          <div class="grid-stack-item"
@@ -1005,7 +1011,7 @@ HTML;
                             unset($array['url']);
                             foreach ($array as &$value) {
                                 if (is_array($value)) {
-                                    $unset_url($value, 'url');
+                                    $unset_url($value);
                                 }
                             }
                         };
@@ -1050,7 +1056,7 @@ HTML;
 
     /**
      * Return Html for a provided set of filters
-     * @param array $filter_names
+     * @param array $filters
      *
      * @return string the html
      */
@@ -1181,7 +1187,7 @@ HTML;
                 }
             }
 
-            foreach ($CFG_GLPI['itemdevices'] as $itemtype) {
+            foreach (Item_Devices::getDeviceTypes() as $itemtype) {
                 $fk_itemtype = $itemtype::getDeviceType();
                 $label = sprintf(
                     __("Number of %s by type"),
@@ -1281,7 +1287,7 @@ HTML;
                         ]
                     ],
                     'cache'      => false,
-                    'filters'    => Filter::getAppliableFilters($itemtype::getTable()),
+                    'filters'    => Filter::getAppliableFilters(Ticket::getTable()),
                 ];
 
                 $cards["table_count_tickets_$case"] = [
@@ -1296,7 +1302,7 @@ HTML;
                             'validation_check_user' => true,
                         ]
                     ],
-                    'filters'    => Filter::getAppliableFilters($itemtype::getTable()),
+                    'filters'    => Filter::getAppliableFilters(Ticket::getTable()),
                 ];
             }
 

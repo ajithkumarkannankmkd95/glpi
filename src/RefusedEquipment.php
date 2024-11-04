@@ -33,6 +33,7 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Inventory\Inventory;
 use Glpi\Inventory\Request;
 
 /**
@@ -49,6 +50,11 @@ class RefusedEquipment extends CommonDBTM
     public static function getTypeName($nb = 0)
     {
         return _n('Equipment refused by rules log', 'Equipments refused by rules log', $nb);
+    }
+
+    public static function getSectorizedDetails(): array
+    {
+        return ['admin', Inventory::class, self::class];
     }
 
     public function rawSearchOptions()
@@ -179,27 +185,27 @@ class RefusedEquipment extends CommonDBTM
         echo "<tr class='tab_bg_1'>";
 
         $itemtype = $this->fields['itemtype'];
-        echo "<th>" .  __('Item type') . "</th>";
-        echo "<td>" . $itemtype::getTypeName(1)  . "</td>";
+        echo "<th>" .  __s('Item type') . "</th>";
+        echo "<td>" . htmlescape($itemtype::getTypeName(1))  . "</td>";
 
-        echo "<th>" . __('Name') . "</th>";
-        echo "<td>" . $this->getName()  . "</td>";
+        echo "<th>" . __s('Name') . "</th>";
+        echo "<td>" . htmlescape($this->getName())  . "</td>";
 
         echo "</tr>";
         echo "<tr class='tab_bg_1'>";
 
-        echo "<th>" .  __('Serial') . "</th>";
-        echo "<td>" . $this->fields['serial']  . "</td>";
+        echo "<th>" .  __s('Serial') . "</th>";
+        echo "<td>" . htmlescape($this->fields['serial'])  . "</td>";
 
-        echo "<th>" .  __('UUID') . "</th>";
-        echo "<td>" . $this->fields['uuid']  . "</td>";
+        echo "<th>" .  __s('UUID') . "</th>";
+        echo "<td>" . htmlescape($this->fields['uuid'])  . "</td>";
 
         echo "</tr>";
         echo "<tr class='tab_bg_1'>";
 
         $rule = new RuleImportAsset();
         $rule->getFromDB($this->fields['rules_id']);
-        echo "<th>" .  Rule::getTypeName(1) . "</th>";
+        echo "<th>" .  htmlescape(Rule::getTypeName(1)) . "</th>";
         echo "<td>";
         echo $rule->getLink();
 
@@ -219,17 +225,17 @@ class RefusedEquipment extends CommonDBTM
 
         $entity = new Entity();
         $entity->getFromDB($this->fields['entities_id']);
-        echo "<th>" .  Entity::getTypeName(1) . "</th>";
+        echo "<th>" .  htmlescape(Entity::getTypeName(1)) . "</th>";
         echo "<td>" . $entity->getLink() . "</td>";
 
         echo "</tr>";
         echo "<tr class='tab_bg_1'>";
 
-        echo "<th>" .  IPAddress::getTypeName(1) . "</th>";
-        echo "<td>" . implode(', ', importArrayFromDB($this->fields['ip'])) . "</td>";
+        echo "<th>" .  htmlescape(IPAddress::getTypeName(1)) . "</th>";
+        echo "<td>" . htmlescape(implode(', ', importArrayFromDB($this->fields['ip']))) . "</td>";
 
-        echo "<th>" .  __('MAC address') . "</th>";
-        echo "<td>" . implode(', ', importArrayFromDB($this->fields['mac'])) . "</td>";
+        echo "<th>" .  __s('MAC address') . "</th>";
+        echo "<td>" . htmlescape(implode(', ', importArrayFromDB($this->fields['mac']))) . "</td>";
 
         echo "</tr>";
         $this->showInventoryInfo();

@@ -60,6 +60,11 @@ class Supplier extends CommonDBTM
         return _n('Supplier', 'Suppliers', $nb);
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['management', self::class];
+    }
+
     public function post_getEmpty()
     {
         $this->fields['is_active'] = 1;
@@ -371,7 +376,7 @@ class Supplier extends CommonDBTM
         $ret = '&nbsp;&nbsp;&nbsp;&nbsp;';
 
         if ($withname) {
-            $ret .= $this->fields["name"];
+            $ret .= htmlescape($this->fields["name"]);
             $ret .= "&nbsp;&nbsp;";
         }
 
@@ -412,16 +417,16 @@ class Supplier extends CommonDBTM
         Html::printPagerForm();
         echo "</th><th colspan='3'>";
         if ($number == 0) {
-            echo __('No associated item');
+            echo __s('No associated item');
         } else {
-            echo _n('Associated item', 'Associated items', $number);
+            echo _sn('Associated item', 'Associated items', $number);
         }
         echo "</th></tr>";
-        echo "<tr><th>" . _n('Type', 'Types', 1) . "</th>";
+        echo "<tr><th>" . _sn('Type', 'Types', 1) . "</th>";
         echo "<th>" . Entity::getTypeName(1) . "</th>";
-        echo "<th>" . __('Name') . "</th>";
-        echo "<th>" . __('Serial number') . "</th>";
-        echo "<th>" . __('Inventory number') . "</th>";
+        echo "<th>" . __s('Name') . "</th>";
+        echo "<th>" . __s('Serial number') . "</th>";
+        echo "<th>" . __s('Inventory number') . "</th>";
         echo "</tr>";
 
         $num = 0;
@@ -514,7 +519,7 @@ class Supplier extends CommonDBTM
                     if ($nb > 0) {
                         $title = sprintf(__('%1$s: %2$s'), $title, $nb);
                     }
-                    echo "<td class='center'>" . $title . "</td>";
+                    echo "<td class='center'>" . htmlescape($title) . "</td>";
                     echo "<td class='center' colspan='2'>";
                     $opt = ['order'      => 'ASC',
                         'is_deleted' => 0,
@@ -531,7 +536,7 @@ class Supplier extends CommonDBTM
                     $link .= (strpos($link, '?') ? '&amp;' : '?');
 
                     echo "<a href='$link" .
-                     Toolbox::append_params($opt) . "'>" . __('Device list') . "</a></td>";
+                     Toolbox::append_params($opt) . "'>" . __s('Device list') . "</a></td>";
 
                     echo "<td class='center'>-</td><td class='center'>-</td></tr>";
                 } else if ($nb) {
@@ -542,7 +547,7 @@ class Supplier extends CommonDBTM
                             $name = sprintf(__('%1$s (%2$s)'), $name, $data["id"]);
                         }
                         $link = $linktype::getFormURLWithID($data[$linkfield]);
-                        $name = "<a href='$link'>" . $name . "</a>";
+                        $name = "<a href='$link'>" . htmlescape($name) . "</a>";
 
                         echo "<tr class='tab_bg_1";
                         if (isset($data['is_template']) && $data['is_template'] == 1) {
@@ -555,7 +560,7 @@ class Supplier extends CommonDBTM
                             if ($nb > 0) {
                                 $title = sprintf(__('%1$s: %2$s'), $title, $nb);
                             }
-                            echo "<td class='center top' rowspan='$nb'>" . $title . "</td>";
+                            echo "<td class='center top' rowspan='$nb'>" . htmlescape($title) . "</td>";
                         }
                         echo "<td class='center'>" . Dropdown::getDropdownName(
                             "glpi_entities",
@@ -565,9 +570,9 @@ class Supplier extends CommonDBTM
                         echo ((isset($data['is_deleted']) && $data['is_deleted']) ? " tab_bg_2_2'" : "'") . ">";
                         echo $name . "</td>";
                         echo "<td class='center'>" .
-                           (isset($data["serial"]) ? "" . $data["serial"] . "" : "-") . "</td>";
+                           (isset($data["serial"]) ? htmlescape($data["serial"]) : "-") . "</td>";
                         echo "<td class='center'>" .
-                           (isset($data["otherserial"]) ? "" . $data["otherserial"] . "" : "-") . "</td>";
+                           (isset($data["otherserial"]) ? htmlescape($data["otherserial"]) : "-") . "</td>";
                         echo "</tr>";
                     }
                 }
@@ -575,7 +580,7 @@ class Supplier extends CommonDBTM
             }
         }
         echo "<tr class='tab_bg_2'>";
-        echo "<td class='center'>" . (($num > 0) ? sprintf(__('%1$s = %2$s'), __('Total'), $num)
+        echo "<td class='center'>" . (($num > 0) ? sprintf(__s('%1$s = %2$s'), __s('Total'), $num)
                                              : "&nbsp;") . "</td>";
         echo "<td colspan='4'>&nbsp;</td></tr> ";
         echo "</table></div>";

@@ -33,10 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
-/** @var $this \Glpi\Controller\LegacyFileLoadController */
+/** @var \Glpi\Controller\LegacyFileLoadController $this */
 $this->setAjax();
-
-Session::checkLoginUser();
 
 if (isset($_POST['regenerate_backup_codes'])) {
     $totp = new \Glpi\Security\TOTPManager();

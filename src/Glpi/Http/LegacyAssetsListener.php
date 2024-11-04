@@ -42,21 +42,17 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\KernelEvents;
 
-final readonly class LegacyAssetsListener implements EventSubscriberInterface
+final class LegacyAssetsListener implements EventSubscriberInterface
 {
     use LegacyRouterTrait;
 
-    /**
-     * GLPI root directory.
-     */
-    protected string $glpi_root;
-
     public function __construct(
-        #[Autowire('%kernel.project_dir%')] private string $projectDir,
+        #[Autowire('%kernel.project_dir%')] string $glpi_root,
+        array $plugin_directories = PLUGINS_DIRECTORIES,
     ) {
-        $this->glpi_root = $projectDir;
+        $this->glpi_root = $glpi_root;
+        $this->plugin_directories = $plugin_directories;
     }
-
 
     public static function getSubscribedEvents(): array
     {
@@ -69,6 +65,14 @@ final readonly class LegacyAssetsListener implements EventSubscriberInterface
     {
         $request = $event->getRequest();
 
+        if (
+            $request->attributes->get('_controller') !== null
+            || $event->getResponse() !== null
+        ) {
+            // A controller or a response has already been defined for this request, do not override them.
+            return;
+        }
+
         $response = $this->serveLegacyAssets($request);
 
         if ($response) {
@@ -80,17 +84,13 @@ final readonly class LegacyAssetsListener implements EventSubscriberInterface
     {
         [$uri_prefix, $path] = $this->extractPathAndPrefix($request);
 
-        if ($this->isPathAllowed($path) === false) {
-            return null;
-        }
+        $target_file = $this->getTargetFile($path);
 
-        $target_file = $this->glpi_root . $path;
-
-        if (!is_file($target_file)) {
-            return null;
-        }
-
-        if ($this->isTargetAPhpScript($path)) {
+        if (
+            $target_file === null
+            || $this->isTargetAPhpScript($path)
+            || $this->isHiddenFile($path)
+        ) {
             return null;
         }
 

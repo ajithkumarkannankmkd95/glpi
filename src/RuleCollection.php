@@ -156,7 +156,7 @@ class RuleCollection extends CommonDBTM
         }
 
        //Select all the rules of a different type
-        $where['sub_type'] = $this->getRuleClassName();
+        $where['sub_type'] = static::getRuleClassName();
         if ($this->isRuleRecursive()) {
             $criteria['LEFT JOIN'] = [
                 Entity::getTable() => [
@@ -248,8 +248,8 @@ class RuleCollection extends CommonDBTM
     /**
      * Get Collection Data: retrieve descriptions and rules
      *
-     * @param boolean $retrieve_criteria  Retrieve the criteria of the rules ? (default 0)
-     * @param boolean $retrieve_action    Retrieve the action of the rules ? (default 0)
+     * @param integer $retrieve_criteria  Retrieve the criteria of the rules ? (default false)
+     * @param integer $retrieve_action    Retrieve the action of the rules ? (default 0)
      * @param integer $condition          Retrieve with a specific condition
      **/
     public function getCollectionDatas($retrieve_criteria = 0, $retrieve_action = 0, $condition = 0)
@@ -259,7 +259,7 @@ class RuleCollection extends CommonDBTM
 
         if ($this->RuleList === null) {
             $this->RuleList = SingletonRuleList::getInstance(
-                $this->getRuleClassName(),
+                static::getRuleClassName(),
                 $this->entity
             );
         }
@@ -286,7 +286,7 @@ class RuleCollection extends CommonDBTM
                             $retrieve_action
                         )
                     ) {
-                      //Add the object to the list of rules
+                        //Add the object to the list of rules
                         $this->RuleList->list[] = $tempRule;
                     }
                 }
@@ -297,9 +297,9 @@ class RuleCollection extends CommonDBTM
     }
 
     /**
-     * @return class-string<Rule>
+     * @return class-string<Rule>|string class-string if valid; else empty string
      */
-    public function getRuleClassName()
+    public static function getRuleClassName()
     {
         if (preg_match('/(.*)Collection/', static::class, $rule_class)) {
             return $rule_class[1];
@@ -313,7 +313,7 @@ class RuleCollection extends CommonDBTM
      **/
     public function getRuleClass()
     {
-        $name = $this->getRuleClassName();
+        $name = static::getRuleClassName();
         if ($name !==  '') {
             return new $name();
         }
@@ -502,7 +502,7 @@ TWIG, $twig_params);
         $p['limit'] = $_SESSION['glpilist_limit'];
         $this->getCollectionPart($p);
 
-        $ruletype = $this->getRuleClassName();
+        $ruletype = static::getRuleClassName();
 
         $entries = [];
         for ($i = $p['start'],$j = 0; isset($this->RuleList->list[$j]); $i++,$j++) {
@@ -559,7 +559,7 @@ TWIG, $twig_params);
                 'extraparams'   => [
                     'entity' => $this->entity,
                     'condition' => $p['condition'],
-                    'rule_class_name' => $this->getRuleClassName()
+                    'rule_class_name' => static::getRuleClassName()
                 ],
                 'item'          => $this
             ]
@@ -590,10 +590,9 @@ TWIG, $twig_params);
             </script>
 HTML;
 
+        $url = $CFG_GLPI["root_doc"];
         if ($plugin = isPluginItemType(static::class)) {
-            $url = Plugin::getWebDir($plugin['plugin']);
-        } else {
-            $url = $CFG_GLPI["root_doc"];
+            $url .= "/plugins/{$plugin['plugin']}";
         }
 
         $twig_params = [
@@ -685,7 +684,7 @@ TWIG, $twig_params);
                 'SELECT' => ['id', 'ranking'],
                 'FROM'   => 'glpi_rules',
                 'WHERE'  => [
-                    'sub_type'  => $this->getRuleClassName()
+                    'sub_type'  => static::getRuleClassName()
                 ] + $add_condition,
                 'LIMIT'  => 1
             ];
@@ -718,7 +717,7 @@ TWIG, $twig_params);
                 $criteria = [
                     'SELECT' => ['id', 'ranking'],
                     'FROM'   => 'glpi_rules',
-                    'WHERE'  => ['sub_type' => $this->getRuleClassName()]
+                    'WHERE'  => ['sub_type' => static::getRuleClassName()]
                 ];
                 $diff = $new_rank - $current_rank;
                 switch ($action) {
@@ -794,7 +793,7 @@ TWIG, $twig_params);
                 'ranking' => new QueryExpression($DB::quoteName('ranking') . ' - 1')
             ],
             [
-                'sub_type'  => $this->getRuleClassName(),
+                'sub_type'  => static::getRuleClassName(),
                 'ranking'   => ['>', $ranking]
             ]
         );
@@ -824,7 +823,7 @@ TWIG, $twig_params);
         $max_ranking_criteria = [
             'SELECT' => ['MAX' => 'ranking AS maxi'],
             'FROM' => 'glpi_rules',
-            'WHERE' => ['sub_type' => $this->getRuleClassName()]
+            'WHERE' => ['sub_type' => static::getRuleClassName()]
         ];
 
         if (is_numeric($type)) {
@@ -870,7 +869,7 @@ TWIG, $twig_params);
                 'SELECT' => ['id', 'ranking AS _ranking'],
                 'FROM'   => 'glpi_rules',
                 'WHERE'  => [
-                    'sub_type'  => $this->getRuleClassName(),
+                    'sub_type'  => static::getRuleClassName(),
                     ['ranking'  => ['>', $old_rank]],
                     ['ranking'  => ['<=', $rank]]
                 ]
@@ -889,7 +888,7 @@ TWIG, $twig_params);
                 'SELECT' => ['id', 'ranking AS _ranking'],
                 'FROM'   => 'glpi_rules',
                 'WHERE'  => [
-                    'sub_type'  => $this->getRuleClassName(),
+                    'sub_type'  => static::getRuleClassName(),
                     ['ranking'  => ['>=', $rank]],
                     ['ranking'  => ['<', $old_rank]]
                 ]
@@ -1441,7 +1440,7 @@ TWIG, $twig_params);
         $output["_no_rule_matches"] = true;
 
         //Store rule type being processed (for plugins)
-        $params['rule_itemtype']    = $this->getRuleClassName();
+        $params['rule_itemtype']    = static::getRuleClassName();
 
         if (count($this->RuleList->list)) {
             foreach ($this->RuleList->list as $rule) {
@@ -1509,7 +1508,7 @@ TWIG, $twig_params);
             'input' => $input,
             'values' => $values,
             'criteria' => $criterias,
-            'rule_classname' => $this->getRuleClassName(),
+            'rule_classname' => static::getRuleClassName(),
             'condition' => $condition,
             'params' => [
                 'target' => $target,
@@ -1604,11 +1603,11 @@ TWIG, $twig_params);
                 if (!Plugin::isPluginActive($plugin)) {
                     continue;
                 }
-                if (is_array($val) && in_array($this->getRuleClassName(), $val, true)) {
+                if (is_array($val) && in_array(static::getRuleClassName(), $val, true)) {
                     $results = Plugin::doOneHook(
                         $plugin,
                         'ruleCollectionPrepareInputDataForProcess',
-                        ['rule_itemtype' => $this->getRuleClassName(),
+                        ['rule_itemtype' => static::getRuleClassName(),
                             'values'        => ['input' => $input,
                                 'params' => $params
                             ]
@@ -1657,7 +1656,7 @@ TWIG, $twig_params);
             ],
             'WHERE'           => [
                 'glpi_rules.is_active'  => 1,
-                'glpi_rules.sub_type'   => $this->getRuleClassName()
+                'glpi_rules.sub_type'   => static::getRuleClassName()
             ] + $limit
         ]);
 
@@ -1876,7 +1875,7 @@ TWIG, $twig_params);
             ],
             'WHERE'           => [
                 'glpi_rules.is_active'  => 1,
-                'glpi_rules.sub_type'   => $this->getRuleClassName()
+                'glpi_rules.sub_type'   => static::getRuleClassName()
             ]
         ]);
 
@@ -2076,8 +2075,10 @@ TWIG, $twig_params);
             ];
         }
 
+        $custom_assets = \Glpi\Asset\AssetDefinitionManager::getInstance()->getDefinitions(true);
+
         if (Session::haveRight("rule_dictionnary_dropdown", READ)) {
-            $dictionnaries[] = [
+            $model_dictionaries = [
                 'type'      => _n('Model', 'Models', Session::getPluralNumber()),
                 'entries'   => [
                     [
@@ -2107,10 +2108,21 @@ TWIG, $twig_params);
                     ]
                 ]
             ];
+
+            foreach ($custom_assets as $custom_asset) {
+                $model_class = $custom_asset->getAssetModelClassName();
+                $model_dictionaries['entries'][] = [
+                    'label' => $model_class::getTypeName(Session::getPluralNumber()),
+                    'link'  => $custom_asset->getAssetModelDictionaryCollectionClassName()::getRuleClassName()::getSearchURL(),
+                    'icon'  => $model_class::getIcon(),
+                ];
+            }
+
+            $dictionnaries[] = $model_dictionaries;
         }
 
         if (Session::haveRight("rule_dictionnary_dropdown", READ)) {
-            $dictionnaries[] = [
+            $type_dictionaries = [
                 'type'      => _n('Type', 'Types', Session::getPluralNumber()),
                 'entries'   => [
                     [
@@ -2140,6 +2152,17 @@ TWIG, $twig_params);
                     ]
                 ]
             ];
+
+            foreach ($custom_assets as $custom_asset) {
+                $type_class = $custom_asset->getAssetTypeClassName();
+                $type_dictionaries['entries'][] = [
+                    'label' => $type_class::getTypeName(Session::getPluralNumber()),
+                    'link'  => $custom_asset->getAssetTypeDictionaryCollectionClassName()::getRuleClassName()::getSearchURL(),
+                    'icon'  => $type_class::getIcon(),
+                ];
+            }
+
+            $dictionnaries[] = $type_dictionaries;
         }
 
         if (Session::haveRight("rule_dictionnary_dropdown", READ)) {

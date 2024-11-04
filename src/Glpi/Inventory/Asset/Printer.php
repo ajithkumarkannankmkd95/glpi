@@ -39,6 +39,7 @@ namespace Glpi\Inventory\Asset;
 use Blacklist;
 use CommonDBTM;
 use Glpi\Asset\Asset_PeripheralAsset;
+use Glpi\Inventory\Conf;
 use IPAddress;
 use Printer as GPrinter;
 use PrinterLog;
@@ -69,6 +70,10 @@ class Printer extends NetworkEquipment
 
     public function prepare(): array
     {
+        if ($this->item->getType() != GPrinter::getType() && $this->conf->import_printer == 0) {
+            return [];
+        }
+
         parent::prepare();
 
         if (!property_exists($this->raw_data->content ?? new \stdClass(), 'network_device')) {
@@ -212,6 +217,10 @@ class Printer extends NetworkEquipment
         /** @var \DBmysql $DB */
         global $DB;
 
+        if (!$this->checkPrinterConf($this->conf)) {
+            return;
+        }
+
         $rule = new RuleImportAssetCollection();
         $printer = new GPrinter();
         $printers = [];
@@ -230,7 +239,7 @@ class Printer extends NetworkEquipment
 
         foreach ($this->data as $key => $val) {
             $input = [
-                'itemtype'     => "Printer",
+                'itemtype'     => \Printer::class,
                 'name'         => $val->name,
                 'serial'       => $val->serial ?? '',
                 'is_dynamic'   => 1
@@ -238,7 +247,7 @@ class Printer extends NetworkEquipment
             $data = $rule->processAllRules($input, [], ['class' => $this, 'return' => true]);
             if (isset($data['found_inventories'])) {
                 $items_id = null;
-                $itemtype = 'Printer';
+                $itemtype = \Printer::class;
                 if ($data['found_inventories'][0] == 0) {
                    // add printer
                     $val->entities_id = $entities_id;
@@ -284,7 +293,7 @@ class Printer extends NetworkEquipment
             ],
             'WHERE'     => [
                 'itemtype_peripheral'           => \Printer::class,
-                'itemtype_asset'                => \Computer::class,
+                'itemtype_asset'                => $this->item::class,
                 'items_id_asset'                => $this->item->fields['id'],
                 'entities_id'                   => $entities_id,
                 $relation_table . '.is_dynamic' => 1,
@@ -318,7 +327,7 @@ class Printer extends NetworkEquipment
         foreach ($printers as $printers_id) {
             $input = [
                 'entities_id'  => $entities_id,
-                'itemtype_asset' => \Computer::class,
+                'itemtype_asset' => $this->item::class,
                 'items_id_asset' => $this->item->fields['id'],
                 'itemtype_peripheral' => \Printer::class,
                 'items_id_peripheral' => $printers_id,
@@ -379,12 +388,12 @@ class Printer extends NetworkEquipment
                     //try to find IP (get from discovery) from known IP of Printer
                     //if found refuse update
                     //if no, printer IP have changed so  we allow the update from discovery
-                    $ipadress = new IPAddress($ip);
+                    $ipaddress = new IPAddress($ip);
                     $tmp['mainitems_id'] = $item->fields['id'];
                     $tmp['mainitemtype'] = $item::getType();
                     $tmp['is_dynamic']   = 1;
-                    $tmp['name']         = $ipadress->getTextual();
-                    if ($ipadress->getFromDBByCrit($tmp)) {
+                    $tmp['name']         = $ipaddress->getTextual();
+                    if ($ipaddress->getFromDBByCrit($tmp)) {
                         return false;
                     }
                     return true;
@@ -397,5 +406,12 @@ class Printer extends NetworkEquipment
     public function getItemtype(): string
     {
         return \Printer::class;
+    }
+
+    public function checkPrinterConf(Conf $conf): bool
+    {
+        /** @var array $CFG_GLPI */
+        global $CFG_GLPI;
+        return $conf->import_printer == 1 && in_array($this->item::class, $CFG_GLPI['peripheralhost_types']);
     }
 }

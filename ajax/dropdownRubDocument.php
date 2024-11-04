@@ -39,7 +39,7 @@
 global $DB;
 
 if (strpos($_SERVER['PHP_SELF'], "dropdownRubDocument.php")) {
-    /** @var $this \Glpi\Controller\LegacyFileLoadController */
+    /** @var \Glpi\Controller\LegacyFileLoadController $this */
     $this->setAjax();
 
     header("Content-Type: text/html; charset=UTF-8");
@@ -84,7 +84,8 @@ if (isset($_POST["rubdoc"])) {
             'width'     => '50%',
             'entity'    => intval($_POST['entity']),
             'rand'      => intval($_POST['rand']),
-            'condition' => ['glpi_documents.documentcategories_id' => (int)$_POST["rubdoc"]]
+            'condition' => ['glpi_documents.documentcategories_id' => (int)$_POST["rubdoc"]],
+            'value'     => (int)($_POST['value'] ?? -1),
         ]
     );
 }

@@ -62,6 +62,7 @@ class Hooks
     const VCARD_DATA            = 'vcard_data';
     const POST_PLUGIN_DISABLE   = 'post_plugin_disable';
     const POST_PLUGIN_CLEAN     = 'post_plugin_clean';
+    const POST_PLUGIN_INSTALL   = 'post_plugin_install';
     const POST_PLUGIN_UNINSTALL = 'post_plugin_uninstall';
     const POST_PLUGIN_ENABLE    = 'post_plugin_enable' ;
 
@@ -104,6 +105,8 @@ class Hooks
     const SHOW_ITEM_STATS           = 'show_item_stats';
 
    // Item hooks expecting an array parameter (available keys: item, options)
+    const PRE_ITIL_INFO_SECTION   = 'pre_itil_info_section';
+    const POST_ITIL_INFO_SECTION  = 'post_itil_info_section';
     const ITEM_TRANSFER           = 'item_transfer';
     const POST_ITEM_FORM          = 'post_item_form';
     const POST_SHOW_ITEM          = 'post_show_item';
@@ -116,6 +119,7 @@ class Hooks
     const TIMELINE_ACTIONS        = 'timeline_actions';  // (keys: item, rand)
     const TIMELINE_ANSWER_ACTIONS = 'timeline_answer_actions';  // (keys: item)
     const SHOW_IN_TIMELINE        = 'show_in_timeline';  // (keys: item)
+    const SET_ITEM_IMPACT_ICON    = 'set_item_impact_icon'; // (keys: itemtype, items_id)
 
    // Security hooks (data to encypt)
     const SECURED_FIELDS  = 'secured_fields';

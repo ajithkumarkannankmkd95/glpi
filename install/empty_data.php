@@ -1985,6 +1985,12 @@ $empty_data_builder = new class
                 'rank' => '6',
             ],
         ];
+        // Set interface to previously defined values.
+        // TODO: the previous values should probably use $ADDTODISPLAYPREF to be
+        // more maintainable...
+        foreach (array_keys($tables['glpi_displaypreferences']) as $index) {
+            $tables['glpi_displaypreferences'][$index]['interface'] = 'central';
+        }
 
         $ADDTODISPLAYPREF['Glpi\Form\Form'] = [1, 80, 86, 3, 4];
         $ADDTODISPLAYPREF['Glpi\Form\AnswersSet'] = [1, 3, 4];
@@ -2006,6 +2012,11 @@ $empty_data_builder = new class
         $ADDTODISPLAYPREF[Webhook::class] = [3, 4, 5];
         $ADDTODISPLAYPREF[QueuedWebhook::class] = [80, 2, 22, 20, 21, 7, 30, 16];
         $ADDTODISPLAYPREF[Consumable::class] = [2, 8, 3, 4, 5, 6, 7];
+        $ADDTODISPLAYPREF_HELPDESK[\Ticket::class] = [
+            12, // Status
+            19, // Last update
+            15, // Opening date
+        ];
 
         foreach ($ADDTODISPLAYPREF as $type => $options) {
             $rank = 1;
@@ -2014,6 +2025,18 @@ $empty_data_builder = new class
                     'itemtype' => $type,
                     'num' => $newval,
                     'rank' => $rank++,
+                    'interface' => 'central',
+                ];
+            }
+        }
+        foreach ($ADDTODISPLAYPREF_HELPDESK as $type => $options) {
+            $rank = 1;
+            foreach ($options as $newval) {
+                $tables['glpi_displaypreferences'][] = [
+                    'itemtype' => $type,
+                    'num' => $newval,
+                    'rank' => $rank++,
+                    'interface' => 'helpdesk',
                 ];
             }
         }
@@ -2438,6 +2461,7 @@ $empty_data_builder = new class
                 'autofill_decommission_date' => 0,
                 'suppliers_as_private' => 0,
                 'enable_custom_css' => 0,
+                'custom_css_code' => '',
                 'anonymize_support_agents' => 0,
                 'display_users_initials' => 1,
                 'contracts_strategy_default' => 0,
@@ -9069,7 +9093,7 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
                 'id' => self::USER_GLPI,
                 'name' => 'glpi',
                 'realname' => null,
-                'password' => '$2y$10$rXXzbc2ShaiCldwkw4AZL.n.9QSH7c0c9XJAyyjrbL9BwmWditAYm',
+                'password' => password_hash('glpi', PASSWORD_DEFAULT),
                 'language' => null,
                 'list_limit' => '20',
                 'authtype' => '1',
@@ -9078,7 +9102,7 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
                 'id' => self::USER_POST_ONLY,
                 'name' => 'post-only',
                 'realname' => null,
-                'password' => '$2y$10$dTMar1F3ef5X/H1IjX9gYOjQWBR1K4bERGf4/oTPxFtJE/c3vXILm',
+                'password' => password_hash('postonly', PASSWORD_DEFAULT),
                 'language' => 'en_GB',
                 'list_limit' => '20',
                 'authtype' => '1',
@@ -9087,7 +9111,7 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
                 'id' => self::USER_TECH,
                 'name' => 'tech',
                 'realname' => null,
-                'password' => '$2y$10$.xEgErizkp6Az0z.DHyoeOoenuh0RcsX4JapBk2JMD6VI17KtB1lO',
+                'password' => password_hash('tech', PASSWORD_DEFAULT),
                 'language' => 'en_GB',
                 'list_limit' => '20',
                 'authtype' => '1',
@@ -9096,7 +9120,7 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
                 'id' => self::USER_NORMAL,
                 'name' => 'normal',
                 'realname' => null,
-                'password' => '$2y$10$Z6doq4zVHkSPZFbPeXTCluN1Q/r0ryZ3ZsSJncJqkN3.8cRiN0NV.',
+                'password' => password_hash('normal', PASSWORD_DEFAULT),
                 'language' => 'en_GB',
                 'list_limit' => '20',
                 'authtype' => '1',
@@ -9157,8 +9181,10 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
         // Test environment data
         if ($is_testing) {
             $root_entity = array_filter($tables['glpi_entities'], static fn ($e) => $e['id'] === 0);
-            $e2e_entity = array_shift($root_entity);
-            $e2e_entity = array_replace($e2e_entity, [
+            $root_entity = current($root_entity);
+
+            // Main E2E test entity
+            $e2e_entity = array_replace($root_entity, [
                 'id' => 1,
                 'name' => 'E2ETestEntity',
                 'entities_id' => 0,
@@ -9166,6 +9192,26 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
                 'level' => 2,
             ]);
             $tables['glpi_entities'][] = $e2e_entity;
+
+            // Sub entity 1
+            $e2e_subentity1 = array_replace($root_entity, [
+                'id' => 2,
+                'name' => 'E2ETestSubEntity1',
+                'entities_id' => 1,
+                'completename' => __('Root entity') . ' > E2ETestEntity > E2ETestSubEntity1',
+                'level' => 3,
+            ]);
+            $tables['glpi_entities'][] = $e2e_subentity1;
+
+            // Sub entity 2
+            $e2e_subentity2 = array_replace($root_entity, [
+                'id' => 3,
+                'name' => 'E2ETestSubEntity2',
+                'entities_id' => 1,
+                'completename' => __('Root entity') . ' > E2ETestEntity > E2ETestSubEntity2',
+                'level' => 3,
+            ]);
+            $tables['glpi_entities'][] = $e2e_subentity2;
 
             // New e2e super-admin user (login: e2e_tests, password: glpi)
             $default_glpi_user = array_filter($tables['glpi_users'], static fn ($u) => $u['id'] === self::USER_GLPI);

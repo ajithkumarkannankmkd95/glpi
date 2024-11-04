@@ -101,8 +101,8 @@ class Vlan extends CommonDropdown
     public static function getHTMLTableHeader(
         $itemtype,
         HTMLTableBase $base,
-        HTMLTableSuperHeader $super = null,
-        HTMLTableHeader $father = null,
+        ?HTMLTableSuperHeader $super = null,
+        ?HTMLTableHeader $father = null,
         array $options = []
     ) {
         $column_name = self::class;
@@ -124,9 +124,9 @@ class Vlan extends CommonDropdown
      * @since 0.84
      */
     public static function getHTMLTableCellsForItem(
-        HTMLTableRow $row = null,
-        CommonDBTM $item = null,
-        HTMLTableCell $father = null,
+        ?HTMLTableRow $row = null,
+        ?CommonDBTM $item = null,
+        ?HTMLTableCell $father = null,
         array $options = []
     ) {
         $column_name = self::class;
@@ -151,14 +151,14 @@ class Vlan extends CommonDropdown
 
             $vlan = new self();
             if ($vlan->getFromDB($options['items_id'])) {
-                $content = htmlspecialchars(sprintf(__('%1$s - %2$s'), $vlan->getName(), $tagged_msg));
+                $content = htmlescape(sprintf(__('%1$s - %2$s'), $vlan->getName(), $tagged_msg));
                 $content .= Html::showToolTip(
-                    htmlspecialchars(sprintf(
+                    htmlescape(sprintf(
                         __('%1$s: %2$s'),
                         __('ID TAG'),
                         $vlan->fields['tag']
                     )) . "<br>" .
-                    htmlspecialchars(sprintf(
+                    htmlescape(sprintf(
                         __('%1$s: %2$s'),
                         __('Comments'),
                         $vlan->fields['comment']

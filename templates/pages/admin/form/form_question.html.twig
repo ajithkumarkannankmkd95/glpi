@@ -52,6 +52,7 @@
     class="mb-3"
     data-glpi-form-editor-block
     data-glpi-form-editor-question
+    data-glpi-draggable-item
     aria-label="{{ question is not null ? question.fields.name : __('New question') }}"
 >
     <section
@@ -98,12 +99,14 @@
                 <span data-glpi-form-editor-required-mark class="text-danger d-none">*</span>
                 {# Duplicate question #}
                 <i
+                    role="button"
                     class="ti ti-copy ms-auto cursor-pointer"
                     data-bs-toggle="tooltip"
                     data-bs-placement="top"
                     title="{{ __("Duplicate question") }}"
                     data-glpi-form-editor-on-click="duplicate-question"
                     data-glpi-form-editor-question-extra-details
+                    role="button"
                 ></i>
             </div>
 
@@ -143,6 +146,7 @@
             <div
                 class="d-flex align-items-center mt-2"
                 data-glpi-form-editor-question-extra-details
+                data-fix-dropdown-flex
             >
                 {% set categories = {} %}
                 {% for category in question_types_manager.getCategories() %}
@@ -251,6 +255,11 @@
             type="hidden"
             name="rank"
             value="{{ question is not null ? question.fields.rank : 0 }}"
+        />
+        <input
+            type="hidden"
+            name="category"
+            value="{{ question_type.getCategory().value }}"
         />
         <input
             type="hidden"

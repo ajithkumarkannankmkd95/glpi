@@ -39,6 +39,7 @@ use Glpi\Application\ErrorHandler;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\DBAL\QueryFunction;
 use Glpi\Inventory\Conf;
+use Glpi\Inventory\Inventory;
 use Glpi\Plugin\Hooks;
 use GuzzleHttp\Client as Guzzle_Client;
 use GuzzleHttp\Psr7\Response;
@@ -75,6 +76,11 @@ class Agent extends CommonDBTM
     public static function getTypeName($nb = 0)
     {
         return _n('Agent', 'Agents', $nb);
+    }
+
+    public static function getSectorizedDetails(): array
+    {
+        return ['admin', Inventory::class, self::class];
     }
 
     public function rawSearchOptions()
@@ -740,7 +746,7 @@ class Agent extends CommonDBTM
             $response = $this->requestAgent('status');
             return $this->handleAgentResponse($response, self::ACTION_STATUS);
         } catch (\GuzzleHttp\Exception\ClientException $e) {
-            ErrorHandler::getInstance()->handleException($e);
+            ErrorHandler::getInstance()->handleException($e, true);
             // not authorized
             return ['answer' => __('Not allowed')];
         } catch (\Throwable $e) {
@@ -761,7 +767,7 @@ class Agent extends CommonDBTM
             $this->requestAgent('now');
             return $this->handleAgentResponse(new Response(), self::ACTION_INVENTORY);
         } catch (\GuzzleHttp\Exception\ClientException $e) {
-            ErrorHandler::getInstance()->handleException($e);
+            ErrorHandler::getInstance()->handleException($e, true);
             // not authorized
             return ['answer' => __('Not allowed')];
         } catch (\Throwable $e) {

@@ -77,6 +77,11 @@ class ProjectTask extends CommonDBChild implements CalDAVCompatibleItemInterface
         return _n('Project task', 'Project tasks', $nb);
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['tools', Project::class, self::class];
+    }
+
     public static function getIcon()
     {
         return 'ti ti-list-check';
@@ -1264,7 +1269,7 @@ class ProjectTask extends CommonDBChild implements CalDAVCompatibleItemInterface
         if ($canedit) {
             echo "<div class='center firstbloc'>";
             echo "<a class='btn btn-primary' href='" . ProjectTask::getFormURL() . "?projects_id=$ID'>" .
-                _x('button', 'Add a task') . "</a>";
+                _sx('button', 'Add a task') . "</a>";
             echo "</div>";
         }
 
@@ -1278,7 +1283,7 @@ class ProjectTask extends CommonDBChild implements CalDAVCompatibleItemInterface
                 action='" . Toolbox::getItemTypeFormURL('ProjectTask') . "'>";
             $projet = $item->fields['projects_id'];
             echo "<a href='" . Toolbox::getItemTypeFormURL('ProjectTask') . "?projecttasks_id=$ID&amp;projects_id=$projet'>";
-            echo __('Create a sub task from this task of project');
+            echo __s('Create a sub task from this task of project');
             echo "</a>";
             Html::closeForm();
             echo "</div>";
@@ -1354,6 +1359,8 @@ class ProjectTask extends CommonDBChild implements CalDAVCompatibleItemInterface
                 $header    .= "</th>";
             }
             foreach ($columns as $key => $val) {
+                $val = htmlescape($val);
+
                 // Non order column
                 if ($key[0] == '_') {
                     $header .= "<th>$val</th>";
@@ -1363,7 +1370,7 @@ class ProjectTask extends CommonDBChild implements CalDAVCompatibleItemInterface
                         (($order == "ASC") ? "DESC" : "ASC") . "&amp;start=0\");'>$val</a></th>";
                 }
             }
-            $header .= "</tr>\n";
+            $header .= "</tr>";
             echo $header;
 
             foreach ($iterator as $data) {
@@ -1420,7 +1427,7 @@ class ProjectTask extends CommonDBChild implements CalDAVCompatibleItemInterface
                 echo "</td></tr>";
             }
             echo $header;
-            echo "</table>\n";
+            echo "</table>";
 
             if ($canedit) {
                 $massiveactionparams['ontop'] = false;
@@ -1429,8 +1436,8 @@ class ProjectTask extends CommonDBChild implements CalDAVCompatibleItemInterface
             }
         } else {
             echo "<table class='tab_cadre_fixe'>";
-            echo "<tr><th>" . __('No item found') . "</th></tr>";
-            echo "</table>\n";
+            echo "<tr><th>" . __s('No item found') . "</th></tr>";
+            echo "</table>";
         }
 
         echo "</div>";
@@ -1495,7 +1502,7 @@ class ProjectTask extends CommonDBChild implements CalDAVCompatibleItemInterface
             echo " method='post' action='" . Toolbox::getItemTypeFormURL('ProjectTaskTeam') . "'>";
             echo "<input type='hidden' name='projecttasks_id' value='$ID'>";
             echo "<table class='tab_cadre_fixe'>";
-            echo "<tr class='tab_bg_1'><th colspan='2'>" . __('Add a team member') . "</tr>";
+            echo "<tr class='tab_bg_1'><th colspan='2'>" . __s('Add a team member') . "</tr>";
             echo "<tr class='tab_bg_2'><td>";
 
             $params = ['itemtypes'       => ProjectTeam::$available_types,
@@ -1537,8 +1544,8 @@ class ProjectTask extends CommonDBChild implements CalDAVCompatibleItemInterface
             $header_bottom .= "<th width='10'>" . Html::getCheckAllAsCheckbox('mass' . __CLASS__ . $rand);
             $header_bottom .= "</th>";
         }
-        $header_end .= "<th>" . _n('Type', 'Types', 1) . "</th>";
-        $header_end .= "<th>" . _n('Member', 'Members', Session::getPluralNumber()) . "</th>";
+        $header_end .= "<th>" . _sn('Type', 'Types', 1) . "</th>";
+        $header_end .= "<th>" . _sn('Member', 'Members', Session::getPluralNumber()) . "</th>";
         $header_end .= "</tr>";
         echo $header_begin . $header_top . $header_end;
 
@@ -1553,7 +1560,7 @@ class ProjectTask extends CommonDBChild implements CalDAVCompatibleItemInterface
                              Html::showMassiveActionCheckBox('ProjectTaskTeam', $data["id"]);
                              echo "</td>";
                         }
-                        echo "<td>" . $item->getTypeName(1) . "</td>";
+                        echo "<td>" . htmlescape($item->getTypeName(1)) . "</td>";
                         echo "<td>" . $item->getLink() . "</td>";
                         echo "</tr>";
                     }
@@ -1746,7 +1753,7 @@ class ProjectTask extends CommonDBChild implements CalDAVCompatibleItemInterface
                         'colspan' => 4,
                         'content' => sprintf(
                             '<a href="%s">%s</a>',
-                            htmlspecialchars(self::getSearchURL() . '?' . Toolbox::append_params($options)),
+                            htmlescape(self::getSearchURL() . '?' . Toolbox::append_params($options)),
                             Html::makeTitle(__('Ongoing projects tasks'), $displayed_row_count, count($projecttasks_id))
                         ),
                     ]
@@ -1791,9 +1798,9 @@ class ProjectTask extends CommonDBChild implements CalDAVCompatibleItemInterface
                         'content' => $state !== false
                             ? sprintf(
                                 '<div class="badge_block" style="border-color:%s"><span class="me-1" style="background:%s"></span>%s',
-                                htmlspecialchars($state->fields['color']),
-                                htmlspecialchars($state->fields['color']),
-                                htmlspecialchars($state->fields['name']),
+                                htmlescape($state->fields['color']),
+                                htmlescape($state->fields['color']),
+                                htmlescape($state->fields['name']),
                             )
                             : '',
                     ],

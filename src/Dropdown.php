@@ -38,6 +38,7 @@ use Glpi\Asset\Asset_PeripheralAsset;
 use Glpi\Asset\AssetDefinitionManager;
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryFunction;
+use Glpi\Dropdown\DropdownDefinitionManager;
 use Glpi\Features\DCBreadcrumb;
 use Glpi\Features\AssignableItem;
 use Glpi\Plugin\Hooks;
@@ -47,6 +48,18 @@ class Dropdown
 {
    //Empty value displayed in a dropdown
     const EMPTY_VALUE = '-----';
+
+    /**
+     * List of standard itemtypes options
+     * @var array|null
+     */
+    private static $standard_itemtypes_options = null;
+
+    /**
+     * List of devices itemtypes options
+     * @var array|null
+     */
+    private static $devices_itemtypes_options = null;
 
     /**
      * Print out an HTML "<select>" for a dropdown with preselected value
@@ -133,6 +146,7 @@ class Dropdown
         $params['parent_id_field']      = null;
         $params['multiple']             = false;
         $params['init']                 = true;
+        $params['aria_label']           = '';
 
         if (is_array($options) && count($options)) {
             foreach ($options as $key => $val) {
@@ -158,6 +172,12 @@ class Dropdown
             $params['value'] = 0;
         }
 
+        if ($params['multiple'] && $params['values'] === '') {
+            // Prevent issues when the value corresponds to the empty string default value sent by the form
+            // when no value is selected and is used when form is redisplayed due, for instance, to unicity check fails.
+            $params['values'] = [];
+        }
+
         // Remove selected value from used to prevent current selected value from being hidden from available values
         if ($params['multiple']) {
             $params['used'] = array_diff($params['used'], $params['values']);
@@ -172,11 +192,11 @@ class Dropdown
             !$params['multiple']
             && ($params['value'] > 0 || ($itemtype == "Entity" && $params['value'] >= 0))
         ) {
-            $tmpname = self::getDropdownName($table, $params['value'], 1);
-
-            if ($tmpname["name"] != "&nbsp;") {
-                $name    = $tmpname["name"];
-                $comment = $tmpname["comment"];
+            $dropdown_name    = self::getDropdownName($table, $params['value']);
+            $dropdown_comment = self::getDropdownComments($table, (int) $params['value']);
+            if ($dropdown_name !== '') {
+                $name    = $dropdown_name;
+                $comment = $dropdown_comment;
             }
         } else if ($params['multiple']) {
             foreach ($params['values'] as $value) {
@@ -260,6 +280,7 @@ class Dropdown
             'parent_id_field'      => $params['parent_id_field'],
             'multiple'             => $params['multiple'] ?? false,
             'init'                 => $params['init'] ?? true,
+            'aria_label'           => $params['aria_label'],
         ];
 
         if ($params['multiple']) {
@@ -362,6 +383,7 @@ class Dropdown
 
            // Supplier Links
             if ($itemtype == "Supplier") {
+                /** @var Supplier $item */
                 if ($item->getFromDB($params['value'])) {
                     $link_icon = '<div>';
                     $link_icon .= $item->getLinks();
@@ -379,8 +401,10 @@ class Dropdown
             }
 
             if ($params['display_dc_position']) {
-                /** @var DCBreadcrumb $item */
-                if ($rack = $item->getParentRack()) {
+                if (
+                    method_exists($item, 'getParentRack')
+                    && ($rack = $item->getParentRack())
+                ) {
                     $dc_icon = "<span id='" . $breadcrumb_id . "' title='" . __s('Display on datacenter') . "'>";
                     $dc_icon .= "&nbsp;<a class='fas fa-crosshairs' href='" . $rack->getLinkURL() . "'></a>";
                     $dc_icon .= "</span>";
@@ -396,6 +420,7 @@ class Dropdown
             ) {
                 // With the self-service profile, $item (whose itemtype = ITILCategory) is empty,
                 //  as the profile does not have rights to ITILCategory to initialise it before.
+                /** @var ITILCategory $item */
                 if ($item->isNewItem()) {
                     $item->getFromDB($params['value']);
                 }
@@ -490,10 +515,17 @@ class Dropdown
      * @param boolean $tooltip      (true by default) returns a tooltip, else returns only 'comment'
      * @param string  $default      default value returned when item not exists
      *
-     * @return string the value of the dropdown
+     * @return string|array the value of the dropdown
+     *      The returned `comment` will corresponds to a safe HTML string.
+     *
+     * @since 11.0.0 Usage of the `$withcomment` parameter is deprecated.
      **/
-    public static function getDropdownName($table, $id, $withcomment = 0, $translate = true, $tooltip = true, string $default = '')
+    public static function getDropdownName($table, $id, $withcomment = false, $translate = true, $tooltip = true, string $default = '')
     {
+        if ($withcomment) {
+            Toolbox::deprecated('Usage of the `$withcomment` parameter is deprecated. Use `Dropdown::getDropdownComments()` instead.');
+        }
+
         /** @var \DBmysql $DB */
         global $DB;
 
@@ -508,81 +540,46 @@ class Dropdown
         }
 
         $name    = "";
-        $comment = "";
 
         if ($id) {
             $SELECTNAME    = new QueryExpression("'' AS " . $DB->quoteName('transname'));
-            $SELECTCOMMENT = new QueryExpression("'' AS " . $DB->quoteName('transcomment'));
             $JOIN          = [];
-            $JOINS         = [];
-            if ($translate) {
-                if (Session::haveTranslations(getItemTypeForTable($table), 'name')) {
-                    $SELECTNAME = 'namet.value AS transname';
-                    $JOINS['glpi_dropdowntranslations AS namet'] = [
-                        'ON' => [
-                            'namet'  => 'items_id',
-                            $table   => 'id', [
-                                'AND' => [
-                                    'namet.itemtype'  => getItemTypeForTable($table),
-                                    'namet.language'  => $_SESSION['glpilanguage'],
-                                    'namet.field'     => 'name'
+            if ($translate && Session::haveTranslations(getItemTypeForTable($table), 'name')) {
+                $SELECTNAME = 'namet.value AS transname';
+                $JOIN = [
+                    'LEFT JOIN' => [
+                        'glpi_dropdowntranslations AS namet' => [
+                            'ON' => [
+                                'namet'  => 'items_id',
+                                $table   => 'id', [
+                                    'AND' => [
+                                        'namet.itemtype'  => getItemTypeForTable($table),
+                                        'namet.language'  => $_SESSION['glpilanguage'],
+                                        'namet.field'     => 'name'
+                                    ]
                                 ]
                             ]
                         ]
-                    ];
-                }
-                if (Session::haveTranslations(getItemTypeForTable($table), 'comment')) {
-                    $SELECTCOMMENT = 'namec.value AS transcomment';
-                    $JOINS['glpi_dropdowntranslations AS namec'] = [
-                        'ON' => [
-                            'namec'  => 'items_id',
-                            $table   => 'id', [
-                                'AND' => [
-                                    'namec.itemtype'  => getItemTypeForTable($table),
-                                    'namec.language'  => $_SESSION['glpilanguage'],
-                                    'namec.field'     => 'comment'
-                                ]
-                            ]
-                        ]
-                    ];
-                }
-
-                if (count($JOINS)) {
-                    $JOIN = ['LEFT JOIN' => $JOINS];
-                }
+                    ]
+                ];
             }
 
             $criteria = [
                 'SELECT' => [
                     "$table.*",
                     $SELECTNAME,
-                    $SELECTCOMMENT
                 ],
                 'FROM'   => $table,
                 'WHERE'  => ["$table.id" => $id]
             ] + $JOIN;
             $iterator = $DB->request($criteria);
 
-           /// TODO review comment management...
-           /// TODO getDropdownName need to return only name
-           /// When needed to use comment use class instead : getComments function
-           /// GetName of class already give Name !!
-           /// TODO CommonDBTM : review getComments to be recursive and add information from class hierarchy
-           /// getUserName have the same system : clean it too
-           /// Need to study the problem
             if (count($iterator)) {
                 $data = $iterator->current();
                 if ($translate && !empty($data['transname'])) {
                     $name = $data['transname'];
                 } else {
                     $name = $data[$itemtype::getNameField()];
-                }
-                if (isset($data["comment"])) {
-                    if ($translate && !empty($data['transcomment'])) {
-                        $comment = $data['transcomment'];
-                    } else {
-                        $comment = $data["comment"];
-                    }
                 }
 
                 switch ($table) {
@@ -595,69 +592,6 @@ class Dropdown
                     case "glpi_contacts":
                        //TRANS: %1$s is the name, %2$s is the firstname
                         $name = sprintf(__('%1$s %2$s'), $name, $data["firstname"]);
-                        if ($tooltip) {
-                            if (!empty($data["phone"])) {
-                                $comment .= "<br>" . sprintf(
-                                    __('%1$s: %2$s'),
-                                    "<span class='b'>" . Phone::getTypeName(1),
-                                    "</span>" . $data['phone']
-                                );
-                            }
-                            if (!empty($data["phone2"])) {
-                                $comment .= "<br>" . sprintf(
-                                    __('%1$s: %2$s'),
-                                    "<span class='b'>" . __('Phone 2'),
-                                    "</span>" . $data['phone2']
-                                );
-                            }
-                            if (!empty($data["mobile"])) {
-                                $comment .= "<br>" . sprintf(
-                                    __('%1$s: %2$s'),
-                                    "<span class='b'>" . __('Mobile phone'),
-                                    "</span>" . $data['mobile']
-                                );
-                            }
-                            if (!empty($data["fax"])) {
-                                $comment .= "<br>" . sprintf(
-                                    __('%1$s: %2$s'),
-                                    "<span class='b'>" . __('Fax'),
-                                    "</span>" . $data['fax']
-                                );
-                            }
-                            if (!empty($data["email"])) {
-                                $comment .= "<br>" . sprintf(
-                                    __('%1$s: %2$s'),
-                                    "<span class='b'>" . _n('Email', 'Emails', 1),
-                                    "</span>" . $data['email']
-                                );
-                            }
-                        }
-                        break;
-
-                    case "glpi_suppliers":
-                        if ($tooltip) {
-                            if (!empty($data["phonenumber"])) {
-                                 $comment .= "<br>" . sprintf(
-                                     __('%1$s: %2$s'),
-                                     "<span class='b'>" . Phone::getTypeName(1),
-                                     "</span>" . $data['phonenumber']
-                                 );
-                            }
-                            if (!empty($data["fax"])) {
-                                $comment .= "<br>" . sprintf(
-                                    __('%1$s: %2$s'),
-                                    "<span class='b'>" . __('Fax'),
-                                    "</span>" . $data['fax']
-                                );
-                            }
-                            if (!empty($data["email"])) {
-                                $comment .= "<br>" . sprintf(
-                                    __('%1$s: %2$s'),
-                                    "<span class='b'>" . _n('Email', 'Emails', 1),
-                                    "</span>" . $data['email']
-                                );
-                            }
-                        }
                         break;
 
                     case "glpi_sockets":
@@ -672,48 +606,6 @@ class Dropdown
                             )
                         );
                         break;
-
-                    case "glpi_budgets":
-                        if ($tooltip) {
-                            if (!empty($data['locations_id'])) {
-                                 $comment .= "<br>" . sprintf(
-                                     __('%1$s: %2$s'),
-                                     "<span class='b'>" . Location::getTypeName(1) . "</span>",
-                                     self::getDropdownName(
-                                         "glpi_locations",
-                                         $data["locations_id"],
-                                         false,
-                                         $translate
-                                     )
-                                 );
-                            }
-                            if (!empty($data['budgettypes_id'])) {
-                                $comment .= "<br>" . sprintf(
-                                    __('%1$s: %2$s'),
-                                    "<span class='b'>" . _n('Type', 'Types', 1) . "</span>",
-                                    self::getDropdownName(
-                                        "glpi_budgettypes",
-                                        $data["budgettypes_id"],
-                                        false,
-                                        $translate
-                                    )
-                                );
-                            }
-                            if (!empty($data['begin_date'])) {
-                                $comment .= "<br>" . sprintf(
-                                    __('%1$s: %2$s'),
-                                    "<span class='b'>" . __('Start date') . "</span>",
-                                    Html::convDateTime($data["begin_date"])
-                                );
-                            }
-                            if (!empty($data['end_date'])) {
-                                $comment .= "<br>" . sprintf(
-                                    __('%1$s: %2$s'),
-                                    "<span class='b'>" . __('End date') . "</span>",
-                                    Html::convDateTime($data["end_date"])
-                                );
-                            }
-                        }
                 }
             }
         }
@@ -725,11 +617,194 @@ class Dropdown
         if ($withcomment) {
             return [
                 'name'      => $name,
-                'comment'   => $comment
+                'comment'   => Dropdown::getDropdownComments((string) $table, (int) $id, (bool) $translate, (bool) $tooltip),
             ];
         }
 
         return $name;
+    }
+
+    /**
+     * Get comments of a dropdown entry.
+     * The returned value is a safe HTML string.
+     *
+     * @param string  $table
+     * @param integer $id
+     * @param boolean $translate
+     * @param boolean $tooltip
+     *
+     * @return string
+     **/
+    public static function getDropdownComments(string $table, int $id, bool $translate = true, bool $tooltip = true)
+    {
+        /** @var \DBmysql $DB */
+        global $DB;
+
+        $itemtype = getItemTypeForTable($table);
+
+        $criteria = [
+            'SELECT'    => [
+                "$table.*",
+            ],
+            'FROM'      => $table,
+            'LEFT JOIN' => [],
+            'WHERE'     => ["$table.id" => $id]
+        ];
+
+        if (
+            $translate
+            && Session::haveTranslations($itemtype, 'comment')
+        ) {
+            $criteria['SELECT'][] = 'comment_translations.value AS translated_comment';
+            $criteria['LEFT JOIN']['glpi_dropdowntranslations AS comment_translations'] = [
+                'ON' => [
+                    'comment_translations'  => 'items_id',
+                    $table                  => 'id',
+                    [
+                        'AND' => [
+                            'comment_translations.itemtype' => $itemtype,
+                            'comment_translations.language' => $_SESSION['glpilanguage'],
+                            'comment_translations.field'    => 'comment'
+                        ]
+                    ]
+                ]
+            ];
+        } else {
+            $criteria['SELECT'][] = new QueryExpression("'' AS " . $DB->quoteName('translated_comment'));
+        }
+
+        if (
+            is_a($itemtype, CommonTreeDropdown::class, true)
+            && $translate
+            && Session::haveTranslations($itemtype, 'completename')
+        ) {
+            $criteria['SELECT'][] = 'completename_translations.value AS translated_completename';
+            $criteria['LEFT JOIN']['glpi_dropdowntranslations AS completename_translations'] = [
+                'ON' => [
+                    'completename_translations'  => 'items_id',
+                    $table                       => 'id',
+                    [
+                        'AND' => [
+                            'completename_translations.itemtype' => $itemtype,
+                            'completename_translations.language' => $_SESSION['glpilanguage'],
+                            'completename_translations.field'    => 'completename'
+                        ]
+                    ]
+                ]
+            ];
+        } else {
+            $criteria['SELECT'][] = new QueryExpression("'' AS " . $DB->quoteName('translated_completename'));
+        }
+
+
+        $iterator = $DB->request($criteria);
+
+        if ($iterator->count() === 0) {
+            return '';
+        }
+
+        $data = $iterator->current();
+
+        $extra_rows = [];
+
+        if ($tooltip) {
+            if (is_a($itemtype, CommonTreeDropdown::class, true)) {
+                $extra_rows[__('Complete name')] = $data['translated_completename'] ?: $data['completename'];
+            }
+
+            $fields = [];
+            switch ($itemtype) {
+                case Contact::class:
+                    $fields = [
+                        'phone'     => Phone::getTypeName(1),
+                        'phone2'    => __('Phone 2'),
+                        'mobile'    => __('Mobile phone'),
+                        'fax'       => __('Fax'),
+                        'email'     => _n('Email', 'Emails', 1),
+                    ];
+                    foreach ($fields as $key => $label) {
+                        if (!empty($data[$key])) {
+                            $extra_rows[$label] = $data[$key];
+                        }
+                    }
+                    break;
+
+                case Supplier::class:
+                    $fields = [
+                        'phonenumber'   => Phone::getTypeName(1),
+                        'fax'           => __('Fax'),
+                        'email'         => _n('Email', 'Emails', 1),
+                    ];
+                    foreach ($fields as $key => $label) {
+                        if (!empty($data[$key])) {
+                            $extra_rows[$label] = $data[$key];
+                        }
+                    }
+                    break;
+
+                case Budget::class:
+                    if (!empty($data['locations_id'])) {
+                        $extra_rows[Location::getTypeName(1)] = self::getDropdownName(
+                            'glpi_locations',
+                            $data['locations_id'],
+                            translate: $translate
+                        );
+                    }
+                    if (!empty($data['budgettypes_id'])) {
+                        $extra_rows[_n('Type', 'Types', 1)] = self::getDropdownName(
+                            'glpi_budgettypes',
+                            $data['budgettypes_id'],
+                            translate: $translate
+                        );
+                    }
+                    if (!empty($data['begin_date'])) {
+                        $extra_rows[__('Start date')] = Html::convDateTime($data['begin_date']);
+                    }
+                    if (!empty($data['end_date'])) {
+                        $extra_rows[__('End date')] = Html::convDateTime($data['end_date']);
+                    }
+                    break;
+
+                case Location::class:
+                    if (!empty($data['alias'])) {
+                        $extra_rows[__('Alias')] = $data['alias'];
+                    }
+                    if (!empty($data['code'])) {
+                        $extra_rows[__('Code')] = $data['code'];
+                    }
+                    $address_comment = '';
+                    $address = $data['address'];
+                    $town    = $data['town'];
+                    $country = $data['country'];
+                    if (!empty($address)) {
+                        $address_comment .= $address;
+                    }
+                    if (!empty($address) && (!empty($town) || !empty($country))) {
+                        $address_comment .= "\n";
+                    }
+                    if (!empty($town)) {
+                        $address_comment .= $town;
+                    }
+                    if (!empty($country)) {
+                        if (!empty($town)) {
+                            $address_comment .= ' - ';
+                        }
+                        $address_comment .= $country;
+                    }
+                    if (trim($address_comment) !== '') {
+                        $extra_rows[__('Address')] = $address_comment;
+                    }
+                    break;
+            }
+        }
+
+        return TemplateRenderer::getInstance()->render(
+            'components/dropdown/comments.html.twig',
+            [
+                'comment'    => $data['translated_comment'] ?: $data['comment'],
+                'extra_rows' => $extra_rows,
+            ]
+        );
     }
 
 
@@ -1083,21 +1158,19 @@ JAVASCRIPT;
      **/
     public static function getDeviceItemTypes()
     {
-        static $optgroup = null;
-
         if (!Session::haveRight('device', READ)) {
             return [];
         }
 
-        if (is_null($optgroup)) {
+        if (self::$devices_itemtypes_options === null) {
             $devices = [];
             foreach (CommonDevice::getDeviceTypes() as $device_type) {
                 $devices[$device_type] = $device_type::getTypeName(Session::getPluralNumber());
             }
             asort($devices);
-            $optgroup = [_n('Component', 'Components', Session::getPluralNumber()) => $devices];
+            self::$devices_itemtypes_options = [_n('Component', 'Components', Session::getPluralNumber()) => $devices];
         }
-        return $optgroup;
+        return self::$devices_itemtypes_options;
     }
 
 
@@ -1105,12 +1178,11 @@ JAVASCRIPT;
      * Get the dropdown list name the user is allowed to edit
      *
      * @return array (group of dropdown) of array (itemtype => localized name)
+     * @phpstan-return array<string, array<class-string<CommonDBTM>, string>>
      **/
-    public static function getStandardDropdownItemTypes()
+    public static function getStandardDropdownItemTypes(bool $check_rights = true)
     {
-        static $optgroup = null;
-
-        if (is_null($optgroup)) {
+        if (self::$standard_itemtypes_options === null) {
             $optgroup = [
                 __('Common') => [
                     'Location' => null,
@@ -1217,7 +1289,7 @@ JAVASCRIPT;
                     'KnowbaseItemCategory' => null
                 ],
 
-                _n('Calendar', 'Calendars', 1) => [
+                _n('Calendar', 'Calendars', Session::getPluralNumber()) => [
                     'Calendar' => null,
                     'Holiday' => null
                 ],
@@ -1298,6 +1370,14 @@ JAVASCRIPT;
 
             ]; //end $opt
 
+            $custom_dropdowns = DropdownDefinitionManager::getInstance()->getCustomObjectClassNames();
+            if (count($custom_dropdowns)) {
+                $optgroup[__('Custom dropdowns')] = [];
+                foreach ($custom_dropdowns as $dropdown) {
+                    $optgroup[__('Custom dropdowns')][$dropdown] = null;
+                }
+            }
+
             $plugdrop = Plugin::getDropdowns();
 
             if (count($plugdrop)) {
@@ -1307,7 +1387,7 @@ JAVASCRIPT;
             foreach ($optgroup as $label => &$dp) {
                 foreach ($dp as $key => &$val) {
                     if ($tmp = getItemForItemtype($key)) {
-                        if (!$tmp->canView()) {
+                        if ($check_rights && !$tmp::canView()) {
                             unset($optgroup[$label][$key]);
                         } else if ($val === null) {
                             $val = $key::getTypeName(Session::getPluralNumber());
@@ -1317,12 +1397,14 @@ JAVASCRIPT;
                     }
                 }
 
-                if (count($optgroup[$label]) == 0) {
+                if (count($optgroup[$label]) === 0) {
                     unset($optgroup[$label]);
                 }
             }
+
+            self::$standard_itemtypes_options = $optgroup;
         }
-        return $optgroup;
+        return self::$standard_itemtypes_options;
     }
 
 
@@ -1347,6 +1429,8 @@ JAVASCRIPT;
 
         echo "<div class='container-fluid text-start'>";
         echo "<div class='mb-3 row'>";
+
+        $title = htmlescape($title);
         echo "<label class='col-sm-1 col-form-label'>$title</label>";
         $selected = '';
 
@@ -1581,6 +1665,11 @@ JAVASCRIPT;
         $params['toupdate']            = '';
         $params['display']             = true;
         $params['track_changes']       = true;
+        $params['init']                = true;
+        $params['width']               = '';
+        $params['no_sort']             = false;
+        $params['aria_label']          = '';
+        $params['add_data_attributes'] = '';
 
         if (is_array($options) && count($options)) {
             foreach ($options as $key => $val) {
@@ -1591,17 +1680,11 @@ JAVASCRIPT;
         if (!is_array($types)) {
             $types = $CFG_GLPI["state_types"];
         }
-        $options = [];
+        $options = self::buildItemtypesDropdownOptions($types, $params['checkright']);
 
-        foreach ($types as $type) {
-            if ($item = getItemForItemtype($type)) {
-                if ($params['checkright'] && !$item->canView()) {
-                    continue;
-                }
-                $options[$type] = $item->getTypeName($params['plural'] ? 2 : 1);
-            }
+        if (!$params['no_sort']) {
+            asort($options);
         }
-        asort($options);
 
         if (count($options)) {
             return Dropdown::showFromArray($params['name'], $options, [
@@ -1613,9 +1696,50 @@ JAVASCRIPT;
                 'display'             => $params['display'],
                 'rand'                => $params['rand'],
                 'track_changes'       => $params['track_changes'],
+                'init'                => $params['init'],
+                'width'               => $params['width'],
+                'aria_label'          => $params['aria_label'],
+                'add_data_attributes' => $params['add_data_attributes'],
             ]);
         }
         return 0;
+    }
+
+    /**
+     * Build dropdown options and check rights if needed
+     *
+     * This method dynamically builds dropdown options based on the provided types.
+     * It supports both single and multiple types (nested) and checks access rights if required.
+     *
+     * @param array       $types The types for which to build dropdown options. Can be a single type or an array of types.
+     * @param bool        $checkright Whether to check access rights for the type(s).
+     * @return array|null The built dropdown options, or null if access is denied or type is invalid.
+     */
+    public static function buildItemtypesDropdownOptions(
+        array $types,
+        bool $checkright = false
+    ): array|null {
+        $options = []; // Initialize the options array to accumulate results.
+
+        foreach ($types as $label => $type) {
+            if (!is_array($type)) {
+                if (
+                    ($item = getItemForItemtype($type)) !== false
+                    && (!$checkright || $item->canView())
+                ) {
+                    $options[$type] = $item->getTypeName();
+                }
+                continue;
+            }
+
+            // Recursively build dropdown options for the current type.
+            $opts = self::buildItemtypesDropdownOptions($type, $checkright);
+            if ($opts !== null) {
+                $options[$label] = $opts;
+            }
+        }
+
+        return $options;
     }
 
 
@@ -1649,22 +1773,29 @@ JAVASCRIPT;
         global $CFG_GLPI;
 
         $params = [
-            'itemtype_name'             => 'itemtype',
-            'items_id_name'             => 'items_id',
-            'itemtypes'                 => '',
-            'default_itemtype'          => 0,
-            'default_items_id'          => -1,
-            'entity_restrict'           => -1,
-            'onlyglobal'                => false,
-            'checkright'                => false,
-            'showItemSpecificity'       => '',
-            'emptylabel'                => self::EMPTY_VALUE,
-            'display_emptychoice'       => true,
-            'used'                      => [],
-            'ajax_page'                 => $CFG_GLPI["root_doc"] . "/ajax/dropdownAllItems.php",
-            'display'                   => true,
-            'rand'                      => mt_rand(),
-            'itemtype_track_changes'    => false,
+            'itemtype_name'                         => 'itemtype',
+            'items_id_name'                         => 'items_id',
+            'itemtypes'                             => '',
+            'default_itemtype'                      => 0,
+            'default_items_id'                      => -1,
+            'entity_restrict'                       => -1,
+            'onlyglobal'                            => false,
+            'checkright'                            => false,
+            'showItemSpecificity'                   => '',
+            'emptylabel'                            => self::EMPTY_VALUE,
+            'display_emptychoice'                   => true,
+            'used'                                  => [],
+            'ajax_page'                             => $CFG_GLPI["root_doc"] . "/ajax/dropdownAllItems.php",
+            'display'                               => true,
+            'rand'                                  => mt_rand(),
+            'itemtype_track_changes'                => false,
+            'init'                                  => true,
+            'width'                                 => '80%',
+            'container_css_class'                   => '',
+            'no_sort'                               => false,
+            'aria_label'                            => '',
+            'specific_tags_items_id_dropdown'       => [],
+            'add_data_attributes_itemtype_dropdown' => '',
         ];
 
         if (is_array($options) && count($options)) {
@@ -1681,14 +1812,22 @@ JAVASCRIPT;
             'display'             => $params['display'],
             'rand'                => $params['rand'],
             'track_changes'       => $params['itemtype_track_changes'],
+            'init'                => $params['init'],
+            'width'               => $params['width'],
+            'no_sort'             => $params['no_sort'],
+            'aria_label'          => $params['aria_label'],
+            'add_data_attributes' => $params['add_data_attributes_itemtype_dropdown'],
         ]);
 
         $p_ajax = [
-            'idtable'             => '__VALUE__',
-            'name'                => $params['items_id_name'],
-            'entity_restrict'     => $params['entity_restrict'],
-            'showItemSpecificity' => $params['showItemSpecificity'],
-            'rand'                => $params['rand']
+            'idtable'                         => '__VALUE__',
+            'name'                            => $params['items_id_name'],
+            'entity_restrict'                 => $params['entity_restrict'],
+            'showItemSpecificity'             => $params['showItemSpecificity'],
+            'rand'                            => $params['rand'],
+            'width'                           => $params['width'],
+            'container_css_class'             => $params['container_css_class'],
+            'specific_tags_items_id_dropdown' => $params['specific_tags_items_id_dropdown'],
         ];
 
        // manage condition
@@ -2209,37 +2348,37 @@ JAVASCRIPT;
         if ($param['readonly']) {
             $to_display = [];
             foreach ($param['values'] as $value) {
-                $output .= "<input type='hidden' name='$field_name' value='$value'>";
+                $output .= "<input type='hidden' name='" . htmlescape($field_name) . "' value='" . htmlescape($value) . "'>";
                 if (isset($elements[$value])) {
-                    $to_display[] = $elements[$value];
+                    $to_display[] = htmlescape($elements[$value]);
                 }
             }
-            $output .= '<span class="form-control" readonly style="width: ' . $param["width"] . '">' . implode(', ', $to_display) . '</span>';
+            $output .= '<span class="form-control" readonly style="width: ' . htmlescape($param["width"]) . '">' . implode(', ', $to_display) . '</span>';
         } else {
             if ($param['multiple']) {
                 // Fix for multiple select not sending any form data when no option is selected
-                $output .= "<input type='hidden' name='$original_field_name' value=''>";
+                $output .= "<input type='hidden' name='" . htmlescape($original_field_name) . "' value=''>";
             }
-            $output  .= "<select name='$field_name' id='$field_id'";
+            $output  .= "<select name='" . htmlescape($field_name) . "' id='" . htmlescape($field_id) . "'";
 
             if ($param['width'] !== '') {
-                $output .= " style='width: " . $param['width'] . "'";
+                $output .= " style='width: " . htmlescape($param['width']) . "'";
             }
 
             if ($param['tooltip']) {
-                $output .= ' title="' . htmlspecialchars($param['tooltip']) . '"';
+                $output .= ' title="' . htmlescape($param['tooltip']) . '"';
             }
 
             if ($param['class']) {
-                $output .= ' class="' . htmlspecialchars($param['class']) . '"';
+                $output .= ' class="' . htmlescape($param['class']) . '"';
             }
 
             if (!empty($param["on_change"])) {
-                $output .= " onChange='" . $param["on_change"] . "'";
+                $output .= " onChange='" . htmlescape($param["on_change"]) . "'";
             }
 
             if ((is_int($param["size"])) && ($param["size"] > 0)) {
-                $output .= " size='" . $param["size"] . "'";
+                $output .= " size='" . htmlescape($param["size"]) . "'";
             }
 
             if ($param["multiple"]) {
@@ -2259,14 +2398,14 @@ JAVASCRIPT;
             }
 
             if ($param['aria_label'] !== '') {
-                $output .= " aria-label='" . htmlspecialchars($param['aria_label']) . "'";
+                $output .= " aria-label='" . htmlescape($param['aria_label']) . "'";
             }
 
             if (!empty($param['add_data_attributes'])) {
                 if (is_array($param['add_data_attributes'])) {
                     $output .= implode(' ', array_map(
                         function ($key, $value) {
-                            return htmlspecialchars('data-' . $key) . '="' . htmlspecialchars($value) . '"';
+                            return htmlescape('data-' . $key) . '="' . htmlescape($value) . '"';
                         },
                         array_keys($param['add_data_attributes']),
                         $param['add_data_attributes']
@@ -2279,7 +2418,7 @@ JAVASCRIPT;
             foreach ($elements as $key => $val) {
                // optgroup management
                 if (is_array($val)) {
-                    $opt_goup = htmlspecialchars($key);
+                    $opt_goup = htmlescape($key);
                     if ($max_option_size < strlen($opt_goup)) {
                         $max_option_size = strlen($opt_goup);
                     }
@@ -2289,18 +2428,18 @@ JAVASCRIPT;
                     if (isset($param['option_tooltips'][$key])) {
                         if (is_array($param['option_tooltips'][$key])) {
                             if (isset($param['option_tooltips'][$key]['__optgroup_label'])) {
-                                $output .= ' title="' . htmlspecialchars($param['option_tooltips'][$key]['__optgroup_label']) . '"';
+                                $output .= ' title="' . htmlescape($param['option_tooltips'][$key]['__optgroup_label']) . '"';
                             }
                             $optgroup_tooltips = $param['option_tooltips'][$key];
                         } else {
-                            $output .= ' title="' . htmlspecialchars($param['option_tooltips'][$key]) . '"';
+                            $output .= ' title="' . htmlescape($param['option_tooltips'][$key]) . '"';
                         }
                     }
                     $output .= ">";
 
                     foreach ($val as $key2 => $val2) {
                         if (!isset($param['used'][$key2])) {
-                            $output .= "<option value='" . $key2 . "'";
+                            $output .= "<option value='" . htmlescape($key2) . "'";
                            // Do not use in_array : trouble with 0 and empty value
                             foreach ($param['values'] as $value) {
                                 if (strcmp($key2, $value) === 0) {
@@ -2309,9 +2448,9 @@ JAVASCRIPT;
                                 }
                             }
                             if ($optgroup_tooltips && isset($optgroup_tooltips[$key2])) {
-                                $output .= ' title="' . htmlspecialchars($optgroup_tooltips[$key2]) . '"';
+                                $output .= ' title="' . htmlescape($optgroup_tooltips[$key2]) . '"';
                             }
-                            $output .= ">" .  htmlspecialchars($val2) . "</option>";
+                            $output .= ">" .  htmlescape($val2) . "</option>";
                             if ($max_option_size < strlen($val2)) {
                                 $max_option_size = strlen($val2);
                             }
@@ -2320,7 +2459,7 @@ JAVASCRIPT;
                     $output .= "</optgroup>";
                 } else {
                     if (!isset($param['used'][$key])) {
-                        $output .= "<option value='" . htmlspecialchars($key) . "'";
+                        $output .= "<option value='" . htmlescape($key) . "'";
                        // Do not use in_array : trouble with 0 and empty value
                         foreach ($param['values'] as $value) {
                             if (strcmp($key, $value) === 0) {
@@ -2329,9 +2468,9 @@ JAVASCRIPT;
                             }
                         }
                         if (isset($param['option_tooltips'][$key])) {
-                            $output .= ' title="' . htmlspecialchars($param['option_tooltips'][$key]) . '"';
+                            $output .= ' title="' . htmlescape($param['option_tooltips'][$key]) . '"';
                         }
-                        $output .= ">" . htmlspecialchars($val) . "</option>";
+                        $output .= ">" . htmlescape($val) . "</option>";
                         if (!is_null($val) && ($max_option_size < strlen($val))) {
                             $max_option_size = strlen($val);
                         }
@@ -2340,7 +2479,7 @@ JAVASCRIPT;
             }
 
             if ($param['other'] !== false) {
-                $output .= "<option value='$other_select_option'";
+                $output .= "<option value='" . htmlescape($other_select_option) . "'";
                 if (is_string($param['other'])) {
                     $output .= " selected";
                 }
@@ -2349,9 +2488,9 @@ JAVASCRIPT;
 
             $output .= "</select>";
             if ($param['other'] !== false) {
-                $output .= "<input name='$other_select_option' id='$other_select_option' type='text'";
+                $output .= "<input name='" . htmlescape($other_select_option) . "' id='" . htmlescape($other_select_option) . "' type='text'";
                 if (is_string($param['other'])) {
-                    $output .= " value=\"" . $param['other'] . "\"";
+                    $output .= " value=\"" . htmlescape($param['other']) . "\"";
                 } else {
                     $output .= " style=\"display: none\"";
                 }
@@ -2374,7 +2513,7 @@ JAVASCRIPT;
            // Hack for All / None because select2 does not provide it
             $select   = __('All');
             $deselect = __('None');
-            $output  .= "<div class='invisible' id='selectallbuttons_$field_id'>";
+            $output  .= "<div class='invisible' id='selectallbuttons_" . htmlescape($field_id) . "'>";
             $output  .= "<div class='d-flex justify-content-around p-1'>";
             $output  .= "<a class='btn btn-sm' " .
                       "onclick=\"selectAll('$field_id');$('#$field_id').select2('close');\">$select" .
@@ -2383,14 +2522,17 @@ JAVASCRIPT;
                      "</a>";
             $output  .= "</div></div>";
 
+            $multichecksappend_varname = "multichecksappend" . str_replace('-', '_', $field_id);
             $js = "
-         var multichecksappend$field_id = false;
-         $('#$field_id').on('select2:open', function(e) {
-            if (!multichecksappend$field_id) {
-               $('#select2-$field_id-results').parent().append($('#selectallbuttons_$field_id').html());
-               multichecksappend$field_id = true;
-            }
-         });";
+                var $multichecksappend_varname = false;
+                $('#$field_id').on('select2:open', function(e) {
+                    if (!$multichecksappend_varname) {
+                        $('#select2-$field_id-results').parent().append($('#selectallbuttons_$field_id').html());
+                        $multichecksappend_varname = true;
+                    }
+                });
+            ";
+
             $output .= Html::scriptBlock($js);
         }
         $output .= Ajax::commonDropdownUpdateItem($param, false);
@@ -2447,7 +2589,7 @@ JAVASCRIPT;
      * Dropdown for global item management
      *
      * @param integer $ID           item ID
-     * @param array   attrs   array which contains the extra paramters
+     * @param array   $attrs   array which contains the extra paramters
      *
      * Parameters can be :
      * - target target for actions
@@ -2512,10 +2654,10 @@ JAVASCRIPT;
                // Templates edition
                 if (!empty($params['withtemplate'])) {
                     echo "<input type='hidden' name='is_global' value='" .
-                      $params['management_restrict'] . "'>";
-                    echo (!$params['management_restrict'] ? __('Unit management') : __('Global management'));
+                        htmlescape($params['management_restrict']) . "'>";
+                    echo (!$params['management_restrict'] ? __s('Unit management') : __s('Global management'));
                 } else {
-                    echo (!$params['value'] ? __('Unit management') : __('Global management'));
+                    echo (!$params['value'] ? __s('Unit management') : __s('Global management'));
                 }
             }
         }
@@ -2533,10 +2675,17 @@ JAVASCRIPT;
     public static function import($itemtype, $input)
     {
 
-        if (!($item = getItemForItemtype($itemtype))) {
-            return false;
+        if (
+            ($item = getItemForItemtype($itemtype))
+            && ($item instanceof CommonDropdown)
+        ) {
+            return $item->import($input);
         }
-        return $item->import($input);
+        trigger_error(
+            sprintf('%s is not a valid item type.', $itemtype),
+            E_USER_WARNING
+        );
+        return false;
     }
 
 
@@ -2563,16 +2712,23 @@ JAVASCRIPT;
         $add = true
     ) {
 
-        if (!($item = getItemForItemtype($itemtype))) {
-            return false;
+        if (
+            ($item = getItemForItemtype($itemtype))
+            && ($item instanceof CommonDropdown)
+        ) {
+            return $item->importExternal($value, $entities_id, $external_params, $comment, $add);
         }
-        return $item->importExternal($value, $entities_id, $external_params, $comment, $add);
+        trigger_error(
+            sprintf('%s is not a valid item type.', $itemtype),
+            E_USER_WARNING
+        );
+        return false;
     }
 
     /**
      * Get the label associated with a management type
      *
-     * @param integer value the type of management (default 0)
+     * @param integer $value the type of management (default 0)
      *
      * @return string the label corresponding to it, or ""
      **/
@@ -3247,10 +3403,9 @@ JAVASCRIPT;
                 $orwhere = ["$table.$field" => ['LIKE', $search]];
 
                 if (
-                    $_SESSION['glpiis_ids_visible']
-                    && is_numeric($post['searchText']) && (int)$post['searchText'] == $post['searchText']
+                    $_SESSION['glpiis_ids_visible'] && (int) $post['searchText'] === $post['searchText']
                 ) {
-                    $orwhere[$table . '.' . $item->getIndexName()] = ['LIKE', "%{$post['searchText']}%"];
+                    $orwhere[$table . '.' . $item::getIndexName()] = ['LIKE', "{$post['searchText']}%"];
                 }
 
                 if ($item instanceof CommonDCModelDropdown) {
@@ -4384,5 +4539,11 @@ JAVASCRIPT;
         return ($json === true)
          ? json_encode($return)
          : $return;
+    }
+
+    public static function resetItemtypesStaticCache(): void
+    {
+        self::$devices_itemtypes_options  = null;
+        self::$standard_itemtypes_options = null;
     }
 }

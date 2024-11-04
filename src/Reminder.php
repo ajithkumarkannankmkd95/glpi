@@ -70,6 +70,10 @@ class Reminder extends CommonDBVisible implements
         return _n('Personal reminder', 'Personal reminders', $nb);
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['tools', self::class];
+    }
 
     public static function canCreate(): bool
     {
@@ -213,7 +217,7 @@ class Reminder extends CommonDBVisible implements
         $join = [];
         $where = [];
 
-       // Users
+        // Users
         $join['glpi_reminders_users'] = [
             'FKEY' => [
                 'glpi_reminders_users'  => 'reminders_id',
@@ -232,7 +236,7 @@ class Reminder extends CommonDBVisible implements
             ];
         }
 
-       // Groups
+        // Groups
         if (
             $forceall
             || (isset($_SESSION["glpigroups"]) && count($_SESSION["glpigroups"]))
@@ -262,7 +266,7 @@ class Reminder extends CommonDBVisible implements
             ];
         }
 
-       // Profiles
+        // Profiles
         if (
             $forceall
             || (isset($_SESSION["glpiactiveprofile"])
@@ -291,7 +295,7 @@ class Reminder extends CommonDBVisible implements
             ];
         }
 
-       // Entities
+        // Entities
         if (
             $forceall
             || (isset($_SESSION["glpiactiveentities"]) && count($_SESSION["glpiactiveentities"]))
@@ -462,8 +466,8 @@ class Reminder extends CommonDBVisible implements
     {
         if (self::canView()) {
             $nb = 0;
-            switch ($item->getType()) {
-                case 'Reminder':
+            switch (get_class($item)) {
+                case Reminder::class:
                     if (Session::haveRight('reminder_public', CREATE)) {
                         if ($_SESSION['glpishow_count_on_tabs']) {
                             $nb = $item->countVisibilities();
@@ -494,8 +498,8 @@ class Reminder extends CommonDBVisible implements
 
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
-        switch ($item->getType()) {
-            case 'Reminder':
+        switch (get_class($item)) {
+            case Reminder::class:
                 $item->showVisibility();
                 return true;
         }
@@ -732,9 +736,9 @@ class Reminder extends CommonDBVisible implements
                 }
                 $link = sprintf(
                     '<a id="content_reminder_%s" href="%s">%s</a>',
-                    htmlspecialchars($data["id"] . $rand),
-                    htmlspecialchars(self::getFormURLWithID($data["id"])),
-                    htmlspecialchars($name)
+                    htmlescape($data["id"] . $rand),
+                    htmlescape(self::getFormURLWithID($data["id"])),
+                    htmlescape($name)
                 );
                 $text = $data["text"];
                 if (!empty($data['transtext'])) {
@@ -759,8 +763,8 @@ class Reminder extends CommonDBVisible implements
                     );
                     $row['values'][] = sprintf(
                         '<a href="%s" class="pointer float-end" title="%s"><i class="ti ti-bell"></i><span class="sr-only">%s</span></a>',
-                        htmlspecialchars(sprintf('%s/front/planning.php?date=%s&type=day', $CFG_GLPI['root_doc'], $date_url)),
-                        htmlspecialchars($planning_text),
+                        htmlescape(sprintf('%s/front/planning.php?date=%s&type=day', $CFG_GLPI['root_doc'], $date_url)),
+                        htmlescape($planning_text),
                         __s('Planning')
                     );
                 } else {

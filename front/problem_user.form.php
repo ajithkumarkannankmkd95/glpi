@@ -33,11 +33,12 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Event;
+use Glpi\Exception\Http\BadRequestHttpException;
+
 /**
  * @since 0.83
  */
-
-use Glpi\Event;
 
 /** @var array $CFG_GLPI */
 global $CFG_GLPI;
@@ -45,14 +46,13 @@ global $CFG_GLPI;
 $link = new Problem_User();
 $item = new Problem();
 
-Session::checkLoginUser();
 Html::popHeader(__('Email followup'), $_SERVER['PHP_SELF']);
 
 if (isset($_POST["update"])) {
     $link->check($_POST["id"], UPDATE);
 
     if ($link->update($_POST)) {
-        echo "<script type='text/javascript' >\n";
+        echo "<script type='text/javascript' >";
         echo "window.parent.location.reload();";
         echo "</script>";
     } else {
@@ -82,7 +82,7 @@ if (isset($_POST["update"])) {
 
     Html::redirect($CFG_GLPI["root_doc"] . "/front/problem.php");
 } else {
-    Html::displayErrorAndDie('Lost');
+    throw new BadRequestHttpException();
 }
 
 Html::popFooter();

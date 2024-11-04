@@ -31,6 +31,10 @@
  * ---------------------------------------------------------------------
  */
 
+/* eslint no-var: 0 */
+/* eslint prefer-arrow-callback: 0 */
+/* eslint prefer-template: 0 */
+
 /* global bootstrap */
 /* global L */
 /* global fuzzy */
@@ -1217,7 +1221,7 @@ function updateItemOnEvent(dropdown_ids, target, url, params = {}, events = ['ch
 
                 const doLoad = () => {
                     // Resolve params to another array to avoid overriding dynamic params like "__VALUE__"
-                    let resolved_params = {};
+                    const resolved_params = {};
                     $.each(params, (k, v) => {
                         if (typeof v === "string") {
                             const reqs = v.match(/^__VALUE(\d+)__$/);
@@ -1558,7 +1562,7 @@ function copyDisclosablePasswordFieldToClipboard(item) {
     $("#" + item).select();
     try {
         document.execCommand("copy");
-    } catch (e) {
+    } catch {
         alert("Copy to clipboard failed'");
     }
     if (is_password_input) {
@@ -1749,6 +1753,7 @@ function setupAjaxDropdown(config) {
     const field_id = $.escapeSelector(config.field_id);
 
     const select2_el = $('#' + field_id).select2({
+        containerCssClass: config.container_css_class,
         width: config.width,
         multiple: config.multiple,
         placeholder: config.placeholder,
@@ -1826,6 +1831,7 @@ function setupAjaxDropdown(config) {
         });
 
     if (config.on_change !== '') {
+        // eslint-disable-next-line no-eval
         $('#' + field_id).on('change', function () { eval(config.on_change); });
     }
 

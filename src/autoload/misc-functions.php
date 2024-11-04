@@ -70,8 +70,7 @@ function isAPI()
  */
 function isPluginItemType($classname)
 {
-
-    /** @var array $matches */
+    $matches = [];
     if (preg_match("/^Plugin([A-Z][a-z0-9]+)([A-Z]\w+)$/", $classname, $matches)) {
         $plug           = [];
         $plug['plugin'] = $matches[1];
@@ -86,4 +85,16 @@ function isPluginItemType($classname)
     }
    // Standard case
     return false;
+}
+
+/**
+ * Escape a string to make it safe to be printed in an HTML page.
+ * This function is pretty similar to the `htmlspecialchars` function, but its signature is less strict.
+ *
+ * @param mixed $str
+ * @return string
+ */
+function htmlescape(mixed $str): string
+{
+    return htmlspecialchars((string) $str);
 }

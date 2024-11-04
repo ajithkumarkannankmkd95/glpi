@@ -59,14 +59,17 @@ class LegacyRouterListener extends \GLPITestCase
                 'marketplace' => [
                     'myplugin' => [
                         'front' => [
+                            'test.php' => '<?php echo("/marketplace/myplugin/front/test.php");',
                             'some.dir' => [
                                 'file.test.php' => '<?php echo("/marketplace/myplugin/front/some.dir/file.test.php");',
                             ],
                         ],
                     ],
+                ],
+                'plugins' => [
                     'mystaleplugin' => [
                         'front' => [
-                            'page.php5' => '<?php echo("/marketplace/mystaleplugin/front/page.php5");',
+                            'page.php5' => '<?php echo("/plugins/mystaleplugin/front/page.php5");',
                         ],
                     ],
                 ],
@@ -74,13 +77,13 @@ class LegacyRouterListener extends \GLPITestCase
         );
 
         // Path to an existing directory that does not have a `index.php` script.
-        yield [
+        yield '/ajax' => [
             'path'            => '/ajax',
             'target_path'     => '/ajax',
             'target_pathinfo' => null,
             'included'        => false,
         ];
-        yield [
+        yield '///ajax' => [
             'path'            => '///ajax', // triple `/` in URL
             'target_path'     => '/ajax',
             'target_pathinfo' => null,
@@ -88,7 +91,7 @@ class LegacyRouterListener extends \GLPITestCase
         ];
 
         // Path to an invalid PHP script.
-        yield [
+        yield '/is/not/valid.php' => [
             'path'            => '/is/not/valid.php',
             'target_path'     => '/is/not/valid.php',
             'target_pathinfo' => null,
@@ -96,13 +99,13 @@ class LegacyRouterListener extends \GLPITestCase
         ];
 
         // Path to a `index.php` script.
-        yield [
+        yield '/front/index.php' => [
             'path'            => '/front/index.php',
             'target_path'     => '/front/index.php',
             'target_pathinfo' => null,
             'included'        => true,
         ];
-        yield [
+        yield '//front/index.php' => [
             'path'            => '//front/index.php', // double `/` in URL
             'target_path'     => '/front/index.php',
             'target_pathinfo' => null,
@@ -110,31 +113,31 @@ class LegacyRouterListener extends \GLPITestCase
         ];
 
         // Path to an existing file, but containing an extra PathInfo
-        yield [
+        yield '/front/whatever.php/' => [
             'path'            => '/front/whatever.php/',
             'target_path'     => '/front/whatever.php',
             'target_pathinfo' => '/',
             'included'        => true,
         ];
-        yield [
+        yield '/front/whatever.php/endpoint/' => [
             'path'            => '/front/whatever.php/endpoint/',
             'target_path'     => '/front/whatever.php',
             'target_pathinfo' => '/endpoint/',
             'included'        => true,
         ];
-        yield [
+        yield '/front/whatever.php//endpoint/' => [
             'path'            => '/front/whatever.php//endpoint/', // double `/` in URL
             'target_path'     => '/front/whatever.php',
             'target_pathinfo' => '/endpoint/',
             'included'        => true,
         ];
-        yield [
+        yield '/front/whatever.php/GlpiPlugin%5CNamespace%5CUnexemple/' => [
             'path'            => '/front/whatever.php/GlpiPlugin%5CNamespace%5CUnexemple/',
             'target_path'     => '/front/whatever.php',
             'target_pathinfo' => '/GlpiPlugin\Namespace\Unexemple/',
             'included'        => true,
         ];
-        yield [
+        yield '/front/whatever.php/calendars/users/J.DUPONT/calendar/' => [
             'path'            => '/front/whatever.php/calendars/users/J.DUPONT/calendar/',
             'target_path'     => '/front/whatever.php',
             'target_pathinfo' => '/calendars/users/J.DUPONT/calendar/',
@@ -142,7 +145,7 @@ class LegacyRouterListener extends \GLPITestCase
         ];
 
         // Path to an existing directory that have a `index.php` script.
-        yield [
+        yield '/front' => [
             'path'            => '/front',
             'target_path'     => '/front/index.php',
             'target_pathinfo' => null,
@@ -150,41 +153,47 @@ class LegacyRouterListener extends \GLPITestCase
         ];
 
         // Path to a JS file
-        yield [
+        yield '/js/common.js' => [
             'path'            => '/js/common.js',
             'target_path'     => '/js/common.js',
             'target_pathinfo' => null,
             'included'        => false,
         ];
 
+        // Path to a PHP script of a plugin located inside the `/marketplace` dir, but accessed with the `/plugins` path.
+        yield '/plugins/myplugin/front/test.php' => [
+            'path'            => '/plugins/myplugin/front/test.php',
+            'target_path'     => '/marketplace/myplugin/front/test.php',
+            'target_pathinfo' => null,
+            'included'        => true,
+        ];
+        yield '/plugins/myplugin/front/some.dir/file.test.php/path/to/item' => [
+            'path'            => '/plugins/myplugin/front/some.dir/file.test.php/path/to/item',
+            'target_path'     => '/marketplace/myplugin/front/some.dir/file.test.php',
+            'target_pathinfo' => '/path/to/item',
+            'included'        => true,
+        ];
+
         // Path to a PHP script in a directory that has a dot in its name.
-        yield [
-            'path'            => '/marketplace/myplugin/front/some.dir/file.test.php',
+        yield '/plugins/myplugin/front/some.dir/file.test.php' => [
+            'path'            => '/plugins/myplugin/front/some.dir/file.test.php',
             'target_path'     => '/marketplace/myplugin/front/some.dir/file.test.php',
             'target_pathinfo' => null,
             'included'        => true,
         ];
-        yield [
-            'path'            => '/marketplace/myplugin/front/some.dir/file.test.php/path/to/item',
+        yield '/plugins/myplugin/front/some.dir/file.test.php/path/to/item' => [
+            'path'            => '/plugins/myplugin/front/some.dir/file.test.php/path/to/item',
             'target_path'     => '/marketplace/myplugin/front/some.dir/file.test.php',
             'target_pathinfo' => '/path/to/item',
             'included'        => true,
         ];
 
         // Path to a `.php5` script.
-        yield [
-            'path'            => '/marketplace/mystaleplugin/front/page.php5',
-            'target_path'     => '/marketplace/mystaleplugin/front/page.php5',
+        yield '/plugins/mystaleplugin/front/page.php5' => [
+            'path'            => '/plugins/mystaleplugin/front/page.php5',
+            'target_path'     => '/plugins/mystaleplugin/front/page.php5',
             'target_pathinfo' => null,
             'included'        => true,
-        ];
-
-        // Path to a PHP script hidden in a CSS file
-        yield [
-            'path'            => '/marketplace/mimehack/css/style.css',
-            'target_path'     => '/marketplace/mimehack/css/style.css',
-            'target_pathinfo' => null,
-            'included'        => false,
         ];
     }
 
@@ -197,7 +206,10 @@ class LegacyRouterListener extends \GLPITestCase
         ?string $target_pathinfo,
         bool $included
     ): void {
-        $this->newTestedInstance(vfsStream::url('glpi'));
+        $this->newTestedInstance(
+            vfsStream::url('glpi'),
+            [vfsStream::url('glpi/marketplace'), vfsStream::url('glpi/plugins')]
+        );
 
         $request = new Request();
         $request->server->set('SCRIPT_NAME', '/index.php');
@@ -217,228 +229,318 @@ class LegacyRouterListener extends \GLPITestCase
 
     protected function pathProvider(): iterable
     {
-        $allowed_glpi_php_paths = [
+        $glpi_exposed_php_files = [
             '/ajax/script.php',
             '/front/page.php',
             '/install/install.php',
             '/install/update.php',
-            '/index.php',
-            '/status.php',
         ];
-        $disallowed_glpi_php_paths = [
-            '/.atoum.php',
+        $glpi_protected_php_files = [
             '/ajax-script.php',
-            '/bin/console',
+            '/apirest.php',
+            '/caldav.php',
             '/config/config_db.php',
             '/files/PHP/1c/db5d8ce30068f6259d1b926165619386c58f1e.PHP',
             '/front-page.php',
-            '/front/.hidden.php',
             '/inc/includes.php',
             '/install/index.php',
             '/install/install.old.php',
             '/install/migrations/update_9.5.x_to_10.0.0.php',
             '/node_modules/flatted/php/flatted.php',
             '/src/Computer.php',
+            '/status.php',
             '/tests/bootstrap.php',
             '/tools/psr4.php',
             '/vendor/htmlawed/htmlawed/htmLawed.php',
         ];
-        $allowed_glpi_static_paths = [
+        $glpi_static_files = [
+            '/config/glpicrypt.key',
             '/css/lib/fontsource/inter/files/inter-latin-100-normal.woff2',
             '/css/lib/tabler/icons-webfont/fonts/tabler-icons.eot',
             '/css/lib/tabler/icons-webfont/fonts/tabler-icons.ttf',
             '/css/lib/tabler/icons-webfont/fonts/tabler-icons.woff',
             '/css/lib/xxx/style.css',
             '/css/lib/xxx/webfont.otf',
+            '/css/palettes/auror.scss',
+            '/files/_log/php-errors.log',
+            '/install/mysql/glpi-empty.sql',
             '/js/common.js',
+            '/locales/en_GB.po',
+            '/locales/en_GB.mo',
+            '/locales/glpi.pot',
+            '/node_modules/rrule/dist/esm/demo/demo.js',
+            '/pics/20/schema.svg',
+            '/pics/charts/sources.md',
             '/pics/expand.gif',
             '/pics/image.jpeg',
             '/pics/icones/ai-dist.png',
-            '/pics/20/schema.svg',
-            '/public/anyfile.ext',
-            '/public/subdir/data.json',
+            '/resources/Rules/RuleAsset.xml',
             '/sound/sound_a.mp3',
             '/sound/sound_a.ogg',
             '/sound/sound_a.wav',
+            '/templates/pages/login.html.twig',
+            '/tests/fixtures/uploads/bar.png',
+            '/tests/run_tests.sh',
+            '/tools/psr12.sh',
             '/videos/demo.mp4',
             '/videos/demo.ogm',
             '/videos/demo.ogv',
             '/videos/demo.webm',
         ];
-        $disallowed_glpi_static_paths = [
+        $glpi_hidden_files = [
+            '/.atoum.php',
             '/.htaccess',
             '/.tx/config',
-            '/config/glpicrypt.key',
-            '/css/palettes/auror.scss',
-            '/files/_log/php-errors.log',
+            '/front/.hidden.php',
             '/install/mysql/.htaccess',
-            '/install/mysql/glpi-empty.sql',
-            '/locales/en_GB.po',
-            '/locales/en_GB.mo',
-            '/locales/glpi.pot',
             '/node_modules/.bin/webpack-cli',
-            '/node_modules/rrule/dist/esm/demo/demo.js',
-            '/pics/charts/sources.md',
-            '/resources/Rules/RuleAsset.xml',
-            '/templates/pages/login.html.twig',
-            '/tests/fixtures/uploads/bar.png',
-            '/tests/run_tests.sh',
-            '/tools/psr12.sh',
         ];
-        // only allowed PHP scripts are served
-        $served_glpi_paths = $allowed_glpi_php_paths;
-        // any static file and disallowed PHP scripts are ignored
-        $ignored_glpi_paths = array_merge(
-            $allowed_glpi_static_paths,
-            $disallowed_glpi_php_paths,
-            $disallowed_glpi_static_paths
+
+        foreach ($glpi_exposed_php_files as $file) {
+            // exposed GLPI PHP files should be served
+            yield $file => [
+                'url_path'  => $file,
+                'file_path' => $file,
+                'is_served' => true,
+            ];
+
+            // extra leading slash should not change result
+            yield '/' . $file => [
+                'url_path'  => '/' . $file,
+                'file_path' => $file,
+                'is_served' => true,
+            ];
+        }
+
+        foreach ($glpi_protected_php_files as $file) {
+            // protected GLPI PHP files should NOT be served
+            yield $file => [
+                'url_path'  => $file,
+                'file_path' => $file,
+                'is_served' => false,
+            ];
+
+            // but any file inside the `/public` dir should be served
+            yield $file . ' (in /public)' => [
+                'url_path'  => $file,
+                'file_path' => '/public' . $file,
+                'is_served' => true,
+            ];
+
+            // extra leading slash should not change result
+            yield '/' . $file => [
+                'url_path'  => '/' . $file,
+                'file_path' => $file,
+                'is_served' => false,
+            ];
+            yield '/' . $file . ' (in /public)' => [
+                'url_path'  => '/' . $file,
+                'file_path' => '/public' . $file,
+                'is_served' => true,
+            ];
+        }
+
+        $not_served_files = \array_merge(
+            $glpi_static_files, // GLPI static files should NOT be served by this listener
+            $glpi_hidden_files // GLPI hidden files should never be served
         );
-
-        foreach ($served_glpi_paths as $path) {
-            yield $path => [
-                'path'      => $path,
-                'is_served' => true,
-            ];
-            yield '/' . $path => [
-                'path'      => '/' . $path, // extra leading slash should not change result
-                'is_served' => true,
-            ];
-        }
-        foreach ($ignored_glpi_paths as $path) {
-            yield $path => [
-                'path'      => $path,
+        foreach ($not_served_files as $file) {
+            // file should NOT be served
+            yield $file => [
+                'url_path'  => $file,
+                'file_path' => $file,
                 'is_served' => false,
             ];
-            yield '/' . $path => [
-                'path'      => '/' . $path, // extra leading slash should not change result
+
+            // even if the file is inside the `/public`
+            yield $file . ' (in /public)' => [
+                'url_path'  => $file,
+                'file_path' => '/public' . $file,
+                'is_served' => false,
+            ];
+
+            // extra leading slash should not change result
+            yield '/' . $file => [
+                'url_path'  => '/' . $file,
+                'file_path' => $file,
+                'is_served' => false,
+            ];
+            yield '/' . $file . ' (in /public)' => [
+                'url_path'  => '/' . $file,
+                'file_path' => '/public' . $file,
                 'is_served' => false,
             ];
         }
 
-        $allowed_plugins_php_paths = [
+        $plugins_exposed_php_files = [
             '/ajax/script.php',
             '/ajax/subdir/messages.php',
-            '/css/styles.css.php',
-            '/css/palette/test.css.php',
             '/front/page.php',
             '/front/subdir/form.php',
+            '/report/mycustomreport.php',
+            '/report/metrics/metrics.php',
+        ];
+        $plugins_protected_php_files = [
+            '/api.php',
+            '/css/styles.css.php',
+            '/css/palette/test.css.php',
+            '/hook.php',
+            '/inc/config.class.php',
             '/index.php',
+            '/install/install.php',
+            '/install/update_2.5_3.0.php',
             '/js/scripts.js.php',
+            '/lib/php-saml/settings_example.php',
             '/path/to/any/index.php',
             '/path/to/any/file.css.php',
             '/path/to/any/file.js.php',
-            '/public/api.php',
-            '/report/mycustomreport.php',
-            '/report/metrics/metrics.php',
             '/root_script.php',
-        ];
-        $disallowed_plugins_php_paths = [
-            '/.atoum.php',
-            '/hook.php',
-            '/inc/config.class.php',
-            '/install/install.php',
-            '/install/update_2.5_3.0.php',
-            '/lib/php-saml/settings_example.php',
             '/scripts/cli_install.php',
             '/setup.php',
             '/tools/dump.php',
             '/vendor/autoload.php',
             '/vendor/fpdf/fpdf/src/Fpdf/Fpdf.php',
         ];
-        $allowed_plugins_static_paths = [
+        $plugins_static_files = [
+            '/changelog.txt',
+            '/css/base.css',
+            '/css/dev.css.map',
             '/css/lib/fontsource/inter/files/inter-latin-100-normal.woff2',
             '/css/lib/tabler/icons-webfont/fonts/tabler-icons.eot',
             '/css/lib/tabler/icons-webfont/fonts/tabler-icons.ttf',
             '/css/lib/tabler/icons-webfont/fonts/tabler-icons.woff',
             '/css/lib/xxx/webfont.otf',
-            '/css/dev.css.map',
-            '/css/base.css',
-            '/documentation/index.htm',
-            '/js/common.js',
-            '/pics/expand.gif',
-            '/pics/image.jpeg',
-            '/pics/icones/ai-dist.png',
-            '/pics/20/schema.svg',
-            '/public/anyfile.ext',
-            '/public/subdir/data.json',
-            '/readme/api/v1.html',
-            '/sound/sound_a.mp3',
-            '/sound/sound_a.ogg',
-            '/sound/sound_a.wav',
-            '/videos/demo.mp4',
-            '/videos/demo.ogm',
-            '/videos/demo.ogv',
-            '/videos/demo.webm',
-        ];
-        $disallowed_plugins_static_paths = [
-            '/.gitignore',
-            '/.htaccess',
-            '/.tx/config',
-            '/changelog.txt',
             '/css/styles.scss',
             '/docker-compose.yml',
+            '/documentation/index.htm',
             '/files/templates/holidays_template.txt',
+            '/js/common.js',
             '/locales/en_GB.po',
             '/locales/en_GB.mo',
             '/locales/myplugin.pot',
             '/myplugin.xml',
-            '/node_modules/.bin/webpack-cli',
             '/node_modules/rrule/dist/esm/demo/demo.js',
             '/package.json',
             '/package-lock.json',
             '/patch/fix-pear-image-barcode.patch',
+            '/pics/expand.gif',
+            '/pics/image.jpeg',
+            '/pics/icones/ai-dist.png',
+            '/pics/20/schema.svg',
+            '/readme/api/v1.html',
             '/README.md',
+            '/sound/sound_a.mp3',
+            '/sound/sound_a.ogg',
+            '/sound/sound_a.wav',
             '/sql/update-1.2.0.sql',
-            '/templates/.htaccess',
             '/templates/config.html.twig',
             '/templates/type.class.tpl',
             '/tools/extract_template.sh',
             '/tools/update_mo.pl',
             '/vendor/mpdf/qrcode/tests/reference/LOREM-IPSUM-2019-L.html',
             '/vendor/tecnickcom/tcpdf/examples/images/img.png',
+            '/videos/demo.mp4',
+            '/videos/demo.ogm',
+            '/videos/demo.ogv',
+            '/videos/demo.webm',
             '/yarn.lock',
         ];
 
-        // only allowed PHP scripts are served
-        $served_plugins_paths = $allowed_plugins_php_paths;
-        // any static file and disallowed PHP scripts are ignored
-        $ignored_glpi_paths = array_merge(
-            $allowed_plugins_static_paths,
-            $disallowed_plugins_php_paths,
-            $disallowed_plugins_static_paths
-        );
+        $plugins_hidden_files = [
+            '/.atoum.php',
+            '/.gitignore',
+            '/.htaccess',
+            '/.tx/config',
+            '/ajax/.hidden.php',
+            '/front/.hidden.php',
+            '/node_modules/.bin/webpack-cli',
+            '/templates/.htaccess',
+        ];
 
-        foreach (['/marketplace/anyname', '/plugins/myplugin'] as $plugin_basepath) {
-            foreach ($served_plugins_paths as $path) {
-                yield $plugin_basepath . $path => [
-                    'path'      => $plugin_basepath . $path,
-                    'is_served' => true,
-                ];
-                yield $plugin_basepath . '/' . $path => [
-                    'path'      => $plugin_basepath . '/' . $path, // extra leading slash should not change result
-                    'is_served' => true,
-                ];
-            }
-            foreach ($ignored_glpi_paths as $path) {
-                yield $plugin_basepath . $path => [
-                    'path'      => $plugin_basepath . $path,
-                    'is_served' => false,
-                ];
-                yield $plugin_basepath . '/' . $path => [
-                    'path'      => $plugin_basepath . '/' . $path, // extra leading slash should not change result
-                    'is_served' => false,
-                ];
-            }
+        foreach ($plugins_exposed_php_files as $file) {
+            // plugin exposed PHP files should be served
+            yield '/plugins/myplugin' . $file => [
+                'url_path'  => '/plugins/myplugin' . $file,
+                'file_path' => '/plugins/myplugin' . $file,
+                'is_served' => true,
+            ];
+
+            // extra leading slash should not change result
+            yield '/plugins/myplugin' . '/' . $file => [
+                'url_path'  => '/plugins/myplugin' . '/' . $file,
+                'file_path' => '/plugins/myplugin' . $file,
+                'is_served' => true,
+            ];
+        }
+
+        foreach ($plugins_protected_php_files as $file) {
+            // plugin protected PHP files should NOT be served
+            yield '/plugins/myplugin' . $file => [
+                'url_path'  => '/plugins/myplugin' . $file,
+                'file_path' => '/plugins/myplugin' . $file,
+                'is_served' => false,
+            ];
+
+            // unless the file is inside the `/public`
+            yield '/plugins/myplugin' . $file . ' (in /public)' => [
+                'url_path'  => '/plugins/myplugin' . $file,
+                'file_path' => '/plugins/myplugin/public' . $file,
+                'is_served' => true,
+            ];
+
+            // extra leading slash should not change result
+            yield '/plugins/myplugin' . '/' . $file => [
+                'url_path'  => '/plugins/myplugin' . '/' . $file,
+                'file_path' => '/plugins/myplugin' . $file,
+                'is_served' => false,
+            ];
+            yield '/plugins/myplugin' . '/' . $file . ' (in /public)' => [
+                'url_path'  => '/plugins/myplugin' . '/' . $file,
+                'file_path' => '/plugins/myplugin/public' . $file,
+                'is_served' => true,
+            ];
+        }
+
+        $not_served_files = \array_merge(
+            $plugins_static_files, // plugins static files should NOT be served by this listener
+            $plugins_hidden_files // plugins hidden files should never be served
+        );
+        foreach ($not_served_files as $file) {
+            // file should NOT be served
+            yield '/plugins/myplugin' . $file => [
+                'url_path'  => '/plugins/myplugin' . $file,
+                'file_path' => '/plugins/myplugin' . $file,
+                'is_served' => false,
+            ];
+
+            // even if the file is inside the `/public`
+            yield '/plugins/myplugin' . $file . ' (in /public)' => [
+                'url_path'  => '/plugins/myplugin' . $file,
+                'file_path' => '/plugins/myplugin/public' . $file,
+                'is_served' => false,
+            ];
+
+            // extra leading slash should not change result
+            yield '/plugins/myplugin' . '/' . $file => [
+                'url_path'  => '/plugins/myplugin' . '/' . $file,
+                'file_path' => '/plugins/myplugin' . $file,
+                'is_served' => false,
+            ];
+            yield '/plugins/myplugin' . '/' . $file . ' (in /public)' => [
+                'url_path'  => '/plugins/myplugin' . '/' . $file,
+                'file_path' => '/plugins/myplugin/public' . $file,
+                'is_served' => false,
+            ];
         }
     }
 
     /**
      * @dataProvider pathProvider
      */
-    public function testRunLegacyRouterFirewall(string $path, bool $is_served): void
+    public function testRunLegacyRouterFirewall(string $url_path, string $file_path, bool $is_served): void
     {
         $structure = null;
-        foreach (array_reverse(explode('/', $path)) as $name) {
+        foreach (array_reverse(explode('/', $file_path)) as $name) {
             if ($name === '') {
                 continue;
             }
@@ -453,11 +555,14 @@ class LegacyRouterListener extends \GLPITestCase
 
         vfsStream::setup('glpi', null, $structure);
 
-        $this->newTestedInstance(vfsStream::url('glpi'));
+        $this->newTestedInstance(
+            vfsStream::url('glpi'),
+            [vfsStream::url('glpi/marketplace'), vfsStream::url('glpi/plugins')]
+        );
 
         $request = new Request();
         $request->server->set('SCRIPT_NAME', '/index.php');
-        $request->server->set('REQUEST_URI', $path);
+        $request->server->set('REQUEST_URI', $url_path);
 
         $response = $this->callPrivateMethod($this->testedInstance, 'runLegacyRouter', $request);
 
@@ -467,7 +572,91 @@ class LegacyRouterListener extends \GLPITestCase
             $this->variable($request->attributes->get('_glpi_file_to_load'))->isNull();
         } else {
             $this->string($request->attributes->get('_controller'))->isEqualTo(LegacyFileLoadController::class);
-            $this->string($request->attributes->get('_glpi_file_to_load'))->isEqualTo(vfsStream::url('glpi') . preg_replace('/\/{2,}/', '/', $path));
+            $this->string($request->attributes->get('_glpi_file_to_load'))->isEqualTo(vfsStream::url('glpi') . $file_path);
         }
+    }
+
+    public function testRunLegacyRouterFromDeprecatedMarketplacePath(): void
+    {
+        $structure = [
+            'marketplace' => [
+                'myplugin' => [
+                    'front' => [
+                        'test.php' => '<?php echo("/marketplace/myplugin/front/test.php");',
+                    ],
+                ],
+            ],
+        ];
+
+        vfsStream::setup('glpi', null, $structure);
+
+        $this->newTestedInstance(
+            vfsStream::url('glpi'),
+            [vfsStream::url('glpi/marketplace'), vfsStream::url('glpi/plugins')]
+        );
+
+        $request = new Request();
+        $request->server->set('SCRIPT_NAME', '/index.php');
+        $request->server->set('REQUEST_URI', '/marketplace/myplugin/front/test.php');
+
+        $this->when(
+            function () use ($request) {
+                $this->callPrivateMethod($this->testedInstance, 'runLegacyRouter', $request);
+            }
+        )->error
+            ->withMessage('Accessing the plugins resources from the `/marketplace/` path is deprecated. Use the `/plugins/` path instead.')
+            ->withType(E_USER_DEPRECATED)
+            ->exists();
+
+        $this->string($request->attributes->get('_controller'))->isEqualTo(LegacyFileLoadController::class);
+        $this->string($request->attributes->get('_glpi_file_to_load'))->isEqualTo(vfsStream::url('glpi/marketplace/myplugin/front/test.php'));
+    }
+
+    public function testRunLegacyRouterFromPluginInMultipleDirectories(): void
+    {
+        $structure = [
+            'marketplace' => [
+                'myplugin' => [
+                    'front' => [
+                        'test.php' => '<?php echo("/marketplace/myplugin/front/test.php");',
+                    ],
+                ],
+            ],
+            'plugins' => [
+                'myplugin' => [
+                    'front' => [
+                        'test.php' => '<?php echo("/marketplace/myplugin/front/test.php");',
+                    ],
+                ],
+            ],
+        ];
+
+        $request = new Request();
+        $request->server->set('SCRIPT_NAME', '/index.php');
+        $request->server->set('REQUEST_URI', '/plugins/myplugin/front/test.php');
+
+        vfsStream::setup('glpi', null, $structure);
+
+        // Plugin inside `/marketplace` should be served when `/marketplace` is dir is declared first
+        $this->newTestedInstance(
+            vfsStream::url('glpi'),
+            [vfsStream::url('glpi/marketplace'), vfsStream::url('glpi/plugins')]
+        );
+
+        $this->callPrivateMethod($this->testedInstance, 'runLegacyRouter', $request);
+
+        $this->string($request->attributes->get('_controller'))->isEqualTo(LegacyFileLoadController::class);
+        $this->string($request->attributes->get('_glpi_file_to_load'))->isEqualTo(vfsStream::url('glpi/marketplace/myplugin/front/test.php'));
+
+        // Plugin inside `/plugins` should be served when `/plugins` is dir is declared first
+        $this->newTestedInstance(
+            vfsStream::url('glpi'),
+            [vfsStream::url('glpi/plugins'), vfsStream::url('glpi/marketplace')]
+        );
+
+        $this->callPrivateMethod($this->testedInstance, 'runLegacyRouter', $request);
+
+        $this->string($request->attributes->get('_controller'))->isEqualTo(LegacyFileLoadController::class);
+        $this->string($request->attributes->get('_glpi_file_to_load'))->isEqualTo(vfsStream::url('glpi/plugins/myplugin/front/test.php'));
     }
 }

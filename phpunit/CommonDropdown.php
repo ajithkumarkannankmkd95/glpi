@@ -47,10 +47,6 @@ abstract class CommonDropdown extends DbTestCase
     abstract protected function getObjectClass();
 
     abstract public static function typenameProvider();
-
-    /**
-     * @dataProvider typenameProvider
-     */
     #[dataProvider('typenameProvider')]
     public function testGetTypeName($string, $expected)
     {
@@ -80,7 +76,8 @@ abstract class CommonDropdown extends DbTestCase
     public function testDefineTabs()
     {
         $instance = $this->newInstance();
-        $this->assertSame($this->getTabs(), $instance->defineTabs());
+        $tabs = array_map('strip_tags', $instance->defineTabs());
+        $this->assertSame($this->getTabs(), $tabs);
     }
 
     public function testPre_deleteItem()

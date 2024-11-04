@@ -46,7 +46,7 @@ describe('Form preview', config, () => {
         }).as('form_id');
 
         cy.login();
-        cy.changeProfile('Super-Admin', true);
+        cy.changeProfile('Super-Admin');
 
         cy.get('@form_id').then((form_id) => {
             const tab = 'Glpi\\Form\\Form$1';
@@ -127,7 +127,7 @@ describe('Form preview', config, () => {
         cy.findAllByRole('region', { 'name': 'Form section' }).eq(1).within(() => {
             // Set the section description
             cy.findByRole('button', { 'name': 'Section actions' }).click();
-            cy.findByRole('link', { 'name': 'Merge with previous section' }).click();
+            cy.findByRole('button', { 'name': 'Merge with previous section' }).click();
         });
         checkPreviewButton();
     });

@@ -64,10 +64,13 @@ class Response extends \GuzzleHttp\Psr7\Response
      * @param string  $message       Error message to send
      * @param string  $content_type  Response content type
      *
-     * @return void
+     * @return never
+     *
+     * @deprecated 11.0.0
      */
-    public static function sendError(int $code, string $message, string $content_type = self::CONTENT_TYPE_JSON): void
+    public static function sendError(int $code, string $message, string $content_type = self::CONTENT_TYPE_JSON): never
     {
+        Toolbox::deprecated('Response::sendError() is deprecated. Throw a `Glpi\Exception\Http\*HttpException` exception instead.');
 
         switch ($content_type) {
             case self::CONTENT_TYPE_JSON:

@@ -33,13 +33,12 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Event;
+use Glpi\Exception\Http\BadRequestHttpException;
+
 /**
  * @since 9.4.0
  */
-
-use Glpi\Event;
-
-Session::checkLoginUser();
 
 $item = new Itil_Project();
 
@@ -59,4 +58,4 @@ if (isset($_POST['add'])) {
     Html::back();
 }
 
-Html::displayErrorAndDie('lost');
+throw new BadRequestHttpException();

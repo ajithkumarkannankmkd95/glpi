@@ -33,18 +33,16 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Event;
+use Glpi\Exception\Http\BadRequestHttpException;
+
 /**
  * @var CommonDBTM $obj
  * @var CommonItilObject_Item $item_obj
  */
 
-use Glpi\Event;
-use Glpi\Http\Response;
-
-Session::checkLoginUser();
-
 if (!($obj instanceof CommonDBTM) || !($item_obj instanceof CommonItilObject_Item)) {
-    Response::sendError(400, 'Bad request', Response::CONTENT_TYPE_TEXT_HTML);
+    throw new BadRequestHttpException('Bad request');
 }
 
 $obj_fkey = $obj->getForeignKeyField();
@@ -63,7 +61,7 @@ if (isset($_POST["add"])) {
             __('Mandatory fields are not filled. Please correct: %s'),
             _n('Associated element', 'Associated elements', 1)
         );
-        Session::addMessageAfterRedirect(htmlspecialchars($message), false, ERROR);
+        Session::addMessageAfterRedirect(htmlescape($message), false, ERROR);
         Html::back();
     }
 
@@ -89,4 +87,4 @@ if (isset($_POST["add"])) {
     Html::back();
 }
 
-Html::displayErrorAndDie("lost");
+throw new BadRequestHttpException();

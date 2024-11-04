@@ -105,8 +105,8 @@ class Rule extends CommonDBTM
     public function getCloneRelations(): array
     {
         return [
-            RuleAction::class,
-            RuleCriteria::class
+            $this->ruleactionclass,
+            $this->rulecriteriaclass
         ];
     }
 
@@ -246,14 +246,14 @@ class Rule extends CommonDBTM
             $menu['rule']['page']  = static::getSearchURL(false);
             $menu['rule']['icon']  = static::getIcon();
 
-            $menu['rule']['options']['transfer']['title']           = __('Transfer');
-            $menu['rule']['options']['transfer']['page']            = "/front/transfer.php";
-            $menu['rule']['options']['transfer']['links']['search'] = "/front/transfer.php";
+            $menu['rule']['options'][Transfer::class]['title']           = __('Transfer');
+            $menu['rule']['options'][Transfer::class]['page']            = "/front/transfer.php";
+            $menu['rule']['options'][Transfer::class]['links']['search'] = "/front/transfer.php";
 
             if (Session::haveRightsOr("transfer", [CREATE, UPDATE])) {
-                $menu['rule']['options']['transfer']['links']['transfer_list']
+                $menu['rule']['options'][Transfer::class]['links']['transfer_list']
                                                                  = "/front/transfer.action.php";
-                $menu['rule']['options']['transfer']['links']['add'] = Transfer::getFormURL(false);
+                $menu['rule']['options'][Transfer::class]['links']['add'] = Transfer::getFormURL(false);
             }
         }
 
@@ -508,6 +508,37 @@ class Rule extends CommonDBTM
             }
         }
 
+        $asset_definitions = \Glpi\Asset\AssetDefinitionManager::getInstance()->getDefinitions(true);
+        foreach ($asset_definitions as $definition) {
+            $model_dictionary_collection = $definition->getAssetModelDictionaryCollectionClassName();
+            $model_dictionary = $model_dictionary_collection::getRuleClassName();
+            $model_entry = [
+                'title' => $definition->getAssetModelClassName()::getTypeName(Session::getPluralNumber()),
+                'page'  => $model_dictionary::getSearchURL(false),
+                'links' => [
+                    'search' => $model_dictionary::getSearchURL(false)
+                ]
+            ];
+            if ($model_dictionary::canCreate()) {
+                $model_entry['links']['add'] = $model_dictionary::getFormURL(false);
+            }
+            $menu['dictionnary']['options']['model.' . $definition->fields['system_name']] = $model_entry;
+
+            $type_dictionary_collection = $definition->getAssetTypeDictionaryCollectionClassName();
+            $type_dictionary = $type_dictionary_collection::getRuleClassName();
+            $type_entry = [
+                'title' => $definition->getAssetTypeClassName()::getTypeName(Session::getPluralNumber()),
+                'page'  => $type_dictionary::getSearchURL(false),
+                'links' => [
+                    'search' => $type_dictionary::getSearchURL(false)
+                ]
+            ];
+            if ($type_dictionary::canCreate()) {
+                $type_entry['links']['add'] = $type_dictionary::getFormURL(false);
+            }
+            $menu['dictionnary']['options']['type.' . $definition->fields['system_name']] = $type_entry;
+        }
+
         if (count($menu)) {
             $menu['is_multi_entries'] = true;
             return $menu;
@@ -516,11 +547,17 @@ class Rule extends CommonDBTM
         return false;
     }
 
+    /**
+     * @phpstan-return class-string<RuleAction>
+     */
     public function getRuleActionClass()
     {
         return $this->ruleactionclass;
     }
 
+    /**
+     * @phpstan-return class-string<RuleCriteria>
+     */
     public function getRuleCriteriaClass()
     {
         return $this->rulecriteriaclass;
@@ -865,7 +902,7 @@ class Rule extends CommonDBTM
         $rand = mt_rand();
 
         $plugin = isPluginItemType(static::class);
-        $base_url = $CFG_GLPI["root_doc"] . ($plugin !== false ? Plugin::getWebDir($plugin['plugin'], false) : '');
+        $base_url = $CFG_GLPI["root_doc"] . ($plugin !== false ? "/plugins/{$plugin['plugin']}" : '');
 
         $add_buttons = [];
         if (!$new_item && $canedit) {
@@ -944,7 +981,7 @@ class Rule extends CommonDBTM
      * @see {@link actions}
      * @see {@link criterias}
      **/
-    public function getRuleWithCriteriasAndActions($ID, $withcriterias = 0, $withactions = 0)
+    public function getRuleWithCriteriasAndActions($ID, $withcriterias = false, $withactions = false)
     {
         if (static::isNewID($ID)) {
             return $this->getEmpty();
@@ -1397,8 +1434,8 @@ JS
     /**
      * Process the rule
      *
-     * @param array &$input the input data used to check criterias
-     * @param array &$output the initial ouput array used to be manipulate by actions
+     * @param array &$input the input data used to check criteria
+     * @param array &$output the initial output array used to be manipulated by actions
      * @param array &$params parameters for all internal functions
      * @param array &$options array options:
      *                     - only_criteria : only react on specific criteria
@@ -1577,12 +1614,12 @@ JS
     /**
      * Process a criteria of a rule
      *
-     * @param RuleCriteria &$criteria  criteria to check
+     * @param RuleCriteria $criteria  criteria to check
      * @param array &$input     the input data used to check criteria
      *
      * @return boolean
      **/
-    public function checkCriteria(&$criteria, &$input)
+    public function checkCriteria($criteria, &$input)
     {
         $partial_regex_result = [];
         // Undefine criteria field : set to blank
@@ -1892,7 +1929,7 @@ JS
             foreach ($RuleCriterias->getRuleCriterias($this->fields['id']) as $RuleCriteria) {
                 $to_display = $this->getMinimalCriteria($RuleCriteria->fields);
                 $data['criteria'] .= '<span class="glpi-badge mb-1">'
-                    . implode('<i class="ti ti-caret-right-filled mx-1"></i>', array_map('htmlspecialchars', $to_display))
+                    . implode('<i class="ti ti-caret-right-filled mx-1"></i>', array_map('htmlescape', $to_display))
                     . '</span><br />';
             }
         }
@@ -1904,7 +1941,7 @@ JS
             foreach ($RuleAction->getRuleActions($this->fields['id']) as $RuleAction) {
                 $to_display = $this->getMinimalAction($RuleAction->fields);
                 $data['actions'] .= '<span class="glpi-badge mb-1">'
-                    . implode('<i class="ti ti-caret-right-filled mx-1"></i>', array_map('htmlspecialchars', $to_display))
+                    . implode('<i class="ti ti-caret-right-filled mx-1"></i>', array_map('htmlescape', $to_display))
                     . '</span><br />';
             }
         }
@@ -1917,7 +1954,7 @@ JS
         );
 
         if ($display_entity) {
-            $entname = htmlspecialchars(Dropdown::getDropdownName('glpi_entities', $this->fields['entities_id']));
+            $entname = htmlescape(Dropdown::getDropdownName('glpi_entities', $this->fields['entities_id']));
             if ($this->maybeRecursive() && $this->fields['is_recursive']) {
                 $entname = sprintf(__s('%1$s %2$s'), $entname, "<span class='fw-bold'>(" . __s('R') . ")</span>");
             }
@@ -2097,7 +2134,7 @@ JS
         $entries = [
             [
                 'action' => __('Validation'),
-                'result' => htmlspecialchars(Dropdown::getYesNo($global_result)),
+                'result' => htmlescape(Dropdown::getYesNo($global_result)),
             ]
         ];
         $output = $this->preProcessPreviewResults($output);
@@ -2122,7 +2159,7 @@ JS
             foreach ($value as $v) {
                 $entries[] = [
                     'action' => $action_def["name"],
-                    'result' => htmlspecialchars($this->getActionValue($action_def_key, $actiontype, $v))
+                    'result' => htmlescape($this->getActionValue($action_def_key, $actiontype, $v))
                 ];
             }
         }
@@ -2134,7 +2171,7 @@ JS
                 $regex_results .= "<table class='table table-sm table-borderless table-striped'>";
                 $regex_results .= "<tr><th>" . __s('Key') . "</th><th>" . __s('Value') . "</th></tr>";
                 foreach ($this->regex_results[0] as $key => $value) {
-                    $regex_results .= "<tr><td>" . htmlspecialchars($key) . "</td><td>" . htmlspecialchars($value) . "</td></tr>";
+                    $regex_results .= "<tr><td>" . htmlescape($key) . "</td><td>" . htmlescape($value) . "</td></tr>";
                 }
                 $regex_results .= "</table>";
             }
@@ -2171,9 +2208,9 @@ JS
     public function getMinimalCriteriaText($fields, $addtotd = '')
     {
         $to_display = $this->getMinimalCriteria($fields);
-        $text  = "<td $addtotd>" . htmlspecialchars($to_display['criterion']) . "</td>";
-        $text .= "<td $addtotd>" . htmlspecialchars($to_display['condition']) . "</td>";
-        $text .= "<td $addtotd>" . htmlspecialchars($to_display['pattern']) . "</td>";
+        $text  = "<td $addtotd>" . htmlescape($to_display['criterion']) . "</td>";
+        $text .= "<td $addtotd>" . htmlescape($to_display['condition']) . "</td>";
+        $text .= "<td $addtotd>" . htmlescape($to_display['pattern']) . "</td>";
         return $text;
     }
 
@@ -2202,9 +2239,9 @@ JS
     public function getMinimalActionText($fields, $addtotd = '')
     {
         $to_display = $this->getMinimalAction($fields);
-        $text  = "<td $addtotd>" . htmlspecialchars($to_display['field']) . "</td>";
-        $text .= "<td $addtotd>" . htmlspecialchars($to_display['type']) . "</td>";
-        $text .= "<td $addtotd>" . htmlspecialchars($to_display['value']) . "</td>";
+        $text  = "<td $addtotd>" . htmlescape($to_display['field']) . "</td>";
+        $text .= "<td $addtotd>" . htmlescape($to_display['type']) . "</td>";
+        $text .= "<td $addtotd>" . htmlescape($to_display['value']) . "</td>";
         return $text;
     }
 
@@ -2621,9 +2658,7 @@ JS
             $crit = $this->getCriteria($ID);
             if (isset($crit['type'])) {
                 return match ($crit['type']) {
-                    'dropdown' => ($result = Dropdown::getDropdownName($crit["table"], $value, false, false)) === '&nbsp;'
-                        ? ''
-                        : $result,
+                    'dropdown' => Dropdown::getDropdownName($crit["table"], $value, translate: false),
                     'dropdown_assign', 'dropdown_users' => getUserName($value),
                     'yesonly', 'yesno' => Dropdown::getYesNo($value),
                     'dropdown_impact' => CommonITILObject::getImpactName($value),
@@ -2925,9 +2960,9 @@ JS
 
         $entries = [];
         foreach ($rules as $rule) {
-            $name = htmlspecialchars($rule->fields["name"]);
+            $name = htmlescape($rule->fields["name"]);
             if ($canedit) {
-                $name = "<a href='" . htmlspecialchars(static::getFormURLWithID($rule->fields["id"]))
+                $name = "<a href='" . htmlescape(static::getFormURLWithID($rule->fields["id"]))
                     . "&amp;onglet=1'>" . $name . "</a>";
             }
 
@@ -3027,12 +3062,12 @@ JS
     /**
      * Clean Rule with Action or Criteria linked to an item
      *
-     * @param Object $item
-     * @param string $field name (default is FK to item)
-     * @param object $ruleitem (instance of Rules of SlaLevel)
-     * @param string $table (glpi_ruleactions, glpi_rulescriterias or glpi_slalevelcriterias)
-     * @param string $valfield (value or pattern)
-     * @param string $fieldfield (criteria of field)
+     * @param CommonDBTM $item
+     * @param string     $field      name (default is FK to item)
+     * @param Rule       $ruleitem   instance of Rules of SlaLevel
+     * @param string     $table      glpi_ruleactions, glpi_rulescriterias or glpi_slalevelcriterias
+     * @param string     $valfield   value or pattern
+     * @param string     $fieldfield criteria of field
      **/
     private static function cleanForItemActionOrCriteria(
         $item,
@@ -3349,36 +3384,46 @@ JS
     /**
      * Create rules (initialisation).
      *
-     * @param boolean $reset        Whether to reset before adding new rules, defaults to true
-     * @param boolean $with_plugins Use plugins rules or not
-     * @param boolean $check        Check if rule exists before creating
+     * @param bool      $reset      Whether to reset before adding new rules, defaults to true
+     * @param ?string   $itemtype   Itemtype to work on
      *
-     * @return boolean
-     *
-     * @FIXME Make it final in GLPI 11.0.
-     * @FIXME Remove $reset, $with_plugins and $check parameters in GLPI 11.0, they are actually not used or have no effect where they are used.
+     * @return bool
      */
-    public static function initRules($reset = true, $with_plugins = true, $check = false): bool
+    final public function initRules(bool $reset = true, ?string $itemtype = null): bool
     {
-        $self = new static();
+        /** @var DBmysql $DB */
+        global $DB;
 
         if (!static::hasDefaultRules()) {
             return false;
         }
 
         if ($reset === true) {
-            $rules = $self->find(['sub_type' => static::class]);
-            foreach ($rules as $data) {
-                $delete = $self->delete($data);
-                if (!$delete) {
-                    return false; // Do not continue if reset failed
-                }
+            $where = ['sub_type' => static::class];
+            $joins = [];
+            if ($itemtype !== null) {
+                $joins = [
+                    'LEFT JOIN' => [
+                        'glpi_rulecriterias' => [
+                            'FKEY' => [
+                                'glpi_rules' => 'id',
+                                'glpi_rulecriterias' => 'rules_id'
+                            ]
+                        ]
+                    ]
+                ];
+                $where += [
+                    'criteria' => 'itemtype',
+                    'pattern' => $itemtype
+                ];
             }
 
-            $check = false; // Nothing to check
+            if (!$DB->delete(self::getTable(), $where, $joins)) {
+                return false; // Do not continue if reset failed
+            }
         }
 
-        $xml = simplexml_load_file(self::getDefaultRulesFilePath());
+        $xml = $this->getDefaultRules();
         if ($xml === false) {
             return false;
         }
@@ -3395,21 +3440,44 @@ JS
         }
 
         $has_errors = false;
-        foreach ($xml->xpath('/rules/rule') as $rulexml) {
+        $xpath = '/rules/rule';
+        if ($itemtype !== null) {
+            $xpath = sprintf(
+                "/rules/rule[rulecriteria/criteria = 'itemtype' and rulecriteria/pattern = '%s']",
+                $itemtype
+            );
+        }
+        foreach ($xml->xpath($xpath) as $rulexml) {
             if ((string)$rulexml->sub_type !== self::getType()) {
-                trigger_error(sprintf('Unexpected rule type for rule `%s`.', (string)$rulexml->uuid), E_USER_WARNING);
+                trigger_error(
+                    sprintf(
+                        'Unexpected rule type %s for rule `%s`.',
+                        (string)$rulexml->sub_type,
+                        (string)$rulexml->uuid
+                    ),
+                    E_USER_WARNING
+                );
                 $has_errors = true;
                 continue;
             }
             if ((string)$rulexml->entities_id !== 'Root entity') {
-                trigger_error(sprintf('Unexpected entity value for rule `%s`.', (string)$rulexml->uuid), E_USER_WARNING);
+                trigger_error(
+                    sprintf(
+                        'Unexpected entity value for rule `%s`.',
+                        (string)$rulexml->uuid
+                    ),
+                    E_USER_WARNING
+                );
                 $has_errors = true;
                 continue;
             }
 
             $rule = new static();
 
-            if ($check === true && $rule->getFromDBByCrit(['uuid' => (string)$rulexml->uuid])) {
+            if (
+                $reset === false // bypass this check in reset mode to save a query
+                && $rule->getFromDBByCrit(['uuid' => (string)$rulexml->uuid])
+            ) {
                 // Rule already exists, ignore it.
                 continue;
             }
@@ -3490,6 +3558,16 @@ JS
     final public static function hasDefaultRules(): bool
     {
         return file_exists(self::getDefaultRulesFilePath());
+    }
+
+    /**
+     * Get default rules as XML
+     *
+     * @return SimpleXMLElement|false
+     */
+    public function getDefaultRules(): SimpleXMLElement|false
+    {
+        return simplexml_load_file(self::getDefaultRulesFilePath());
     }
 
     /**

@@ -87,6 +87,12 @@ class Ticket extends CommonITILObject
     const CHANGEPRIORITY   =  65536;
     const READNEWTICKET    = 262144;
 
+    #[Override]
+    public static function supportHelpdeskDisplayPreferences(): bool
+    {
+        return true;
+    }
+
     public function getForbiddenStandardMassiveAction()
     {
 
@@ -389,10 +395,10 @@ class Ticket extends CommonITILObject
     /**
      * Get Datas to be added for SLA add
      *
-     * @param $slas_id      SLA id
-     * @param $entities_id  entity ID of the ticket
-     * @param $date         begin date of the ticket
-     * @param $type         type of SLA
+     * @param int    $slas_id      SLA id
+     * @param int    $entities_id  entity ID of the ticket
+     * @param string $date         begin date of the ticket
+     * @param int    $type         type of SLA
      *
      * @since 9.1 (before getDatasToAddSla without type parameter)
      *
@@ -431,10 +437,10 @@ class Ticket extends CommonITILObject
     /**
      * Get Datas to be added for OLA add
      *
-     * @param $olas_id      OLA id
-     * @param $entities_id  entity ID of the ticket
-     * @param $date         begin date of the ticket
-     * @param $type         type of OLA
+     * @param int    $olas_id      OLA id
+     * @param int    $entities_id  entity ID of the ticket
+     * @param string $date         begin date of the ticket
+     * @param int    $type         type of OLA
      *
      * @since 9.2 (before getDatasToAddOla without type parameter)
      *
@@ -1489,29 +1495,6 @@ class Ticket extends CommonITILObject
             return false;
         }
 
-       // Check a self-service user can create a ticket for another user.
-       // We condition the check with a bool flag set in front/tracking.injector.php (self-service ticket controller).
-       // This to avoid plugins having their process broken.
-        if (
-            isset($input['check_delegatee'], $input['_users_id_requester'])
-            && $input['check_delegatee']
-        ) {
-            $requesters_ids = is_array($input['_users_id_requester'])
-                ? $input['_users_id_requester']
-                : [$input['_users_id_requester']];
-            $can_delegatee_create_ticket = false;
-            foreach ($requesters_ids as $requester_id) {
-                if (self::canDelegateeCreateTicket($requester_id, ($input['entities_id'] ?? -2))) {
-                    $can_delegatee_create_ticket = true;
-                    break;
-                }
-            }
-            if (!$can_delegatee_create_ticket) {
-                Session::addMessageAfterRedirect(__s("You cannot create a ticket for this user"));
-                return false;
-            }
-        }
-
         if (!isset($input["requesttypes_id"])) {
             $input["requesttypes_id"] = RequestType::getDefault('helpdesk');
         }
@@ -1599,7 +1582,7 @@ class Ticket extends CommonITILObject
             foreach ($input['_users_id_requester_notif']['alternative_email'] as $email) {
                 if ($email && !NotificationMailing::isUserAddressValid($email)) {
                     Session::addMessageAfterRedirect(
-                        htmlspecialchars(sprintf(__('Invalid email address %s'), $email)),
+                        htmlescape(sprintf(__('Invalid email address %s'), $email)),
                         false,
                         ERROR
                     );
@@ -2005,10 +1988,10 @@ class Ticket extends CommonITILObject
     /**
      * Overloaded from commonDBTM
      *
-     * @param $type string of object to add
+     * @param string $type itemtype of object to add
      *
      * @return boolean
-     **@since 0.83
+     * @since 0.83
      *
      */
     public function canAddItem(string $type): bool
@@ -2072,7 +2055,16 @@ class Ticket extends CommonITILObject
             || Profile::haveUserRight($user_id, $rightname, ITILFollowup::ADDALLITEM, $entity_id)
             || (
                 Profile::haveUserRight($user_id, $rightname, ITILFollowup::ADD_AS_GROUP, $entity_id)
-                && $this->haveAGroup(CommonITILActor::REQUESTER, $user_groups_ids)
+                && (
+                    (
+                        $this->haveAGroup(CommonITILActor::REQUESTER, $user_groups_ids)
+                        && Profile::haveUserRight($user_id, $rightname, ITILFollowup::ADDMY, $entity_id)
+                    )
+                    || (
+                        $this->haveAGroup(CommonITILActor::OBSERVER, $user_groups_ids)
+                        && Profile::haveUserRight($user_id, $rightname, ITILFollowup::ADD_AS_OBSERVER, $entity_id)
+                    )
+                )
             )
             || (
                 Profile::haveUserRight($user_id, $rightname, ITILFollowup::ADD_AS_TECHNICIAN, $entity_id)
@@ -2243,33 +2235,33 @@ class Ticket extends CommonITILObject
                     'rand'         => $rand
                 ];
                 echo "<table class='mx-auto'><tr>";
-                echo "<td><label for='dropdown__mergeticket$rand'>" . Ticket::getTypeName(1) . "</label></td><td colspan='3'>";
+                echo "<td><label for='dropdown__mergeticket$rand'>" . htmlescape(Ticket::getTypeName(1)) . "</label></td><td colspan='3'>";
                 Ticket::dropdown($mergeparam);
-                echo "</td></tr><tr><td><label for='with_followups'>" . __('Merge followups') . "</label></td><td>";
+                echo "</td></tr><tr><td><label for='with_followups'>" . __s('Merge followups') . "</label></td><td>";
                 Html::showCheckbox([
                     'name'    => 'with_followups',
                     'id'      => 'with_followups',
                     'checked' => true
                 ]);
-                echo "</td><td><label for='with_documents'>" . __('Merge documents') . "</label></td><td>";
+                echo "</td><td><label for='with_documents'>" . __s('Merge documents') . "</label></td><td>";
                 Html::showCheckbox([
                     'name'    => 'with_documents',
                     'id'      => 'with_documents',
                     'checked' => true
                 ]);
-                echo "</td></tr><tr><td><label for='with_tasks'>" . __('Merge tasks') . "<label></td><td>";
+                echo "</td></tr><tr><td><label for='with_tasks'>" . __s('Merge tasks') . "<label></td><td>";
                 Html::showCheckbox([
                     'name'    => 'with_tasks',
                     'id'      => 'with_tasks',
                     'checked' => true
                 ]);
-                echo "</td><td><label for='with_actors'>" . __('Merge actors') . "</label></td><td>";
+                echo "</td><td><label for='with_actors'>" . __s('Merge actors') . "</label></td><td>";
                 Html::showCheckbox([
                     'name'    => 'with_actors',
                     'id'      => 'with_actors',
                     'checked' => true
                 ]);
-                echo "</td></tr><tr><td><label for='dropdown_link_type$rand'>" . __('Link type') . "</label></td><td colspan='3'>";
+                echo "</td></tr><tr><td><label for='dropdown_link_type$rand'>" . __s('Link type') . "</label></td><td colspan='3'>";
                 Dropdown::showFromArray('link_type', [
                     0                                                   => __('None'),
                     CommonITILObject_CommonITILObject::LINK_TO          => __('Linked to'),
@@ -2304,7 +2296,7 @@ class Ticket extends CommonITILObject
                 echo '<div class="horizontal-form">';
 
                 echo '<div class="form-row">';
-                $label = SolutionTemplate::getTypeName(1);
+                $label = htmlescape(SolutionTemplate::getTypeName(1));
                 echo "<label for='solution_template'>$label</label>";
                 SolutionTemplate::dropdown([
                     'name'     => "solution_template",
@@ -2336,7 +2328,7 @@ JAVASCRIPT;
                 echo '</div>'; // .form-row
 
                 echo '<div class="form-row">';
-                $label = SolutionType::getTypeName(1);
+                $label = htmlescape(SolutionType::getTypeName(1));
                 echo "<label for='solutiontypes_id'>$label</label>";
                 SolutionType::dropdown([
                     'name'  => 'solutiontypes_id',
@@ -2345,7 +2337,7 @@ JAVASCRIPT;
                 echo '</div>'; // .form-row
 
                 echo '<div class="form-row-vertical">';
-                $label = __('Description');
+                $label = __s('Description');
 
                 echo "<label for='content'>";
                 echo "$label&nbsp;&nbsp;";
@@ -3106,6 +3098,10 @@ JAVASCRIPT;
             );
         }
 
+        if (Session::haveRight('change', READ)) {
+            $tab = array_merge($tab, Change::rawSearchOptionsToAdd('Ticket'));
+        }
+
         $tab[] = [
             'id'                 => 'tools',
             'name'               => __('Tools')
@@ -3158,7 +3154,7 @@ JAVASCRIPT;
             ],
         ];
 
-       // Filter search fields for helpdesk
+        // Filter search fields for helpdesk
         if (
             !Session::isCron() // no filter for cron
             && (Session::getCurrentInterface() != 'central')
@@ -3647,7 +3643,7 @@ JAVASCRIPT;
          <i class='fas fa-plus'></i>
       </a>";
 
-       // add an additionnal observer on anchor click
+       // add an additional observer on anchor click
         Ajax::updateItemOnEvent(
             "addObserver$rand",
             "observer_$rand",
@@ -3656,7 +3652,7 @@ JAVASCRIPT;
             ['click']
         );
 
-       // div for an additionnal observer
+       // div for an additional observer
         echo "<div class='actor_single' id='observer_$rand'></div>";
     }
 
@@ -3834,29 +3830,6 @@ JAVASCRIPT;
             }
         }
 
-        // Check category / type validity
-        if ($options['itilcategories_id']) {
-            $cat = new ITILCategory();
-            if ($cat->getFromDB($options['itilcategories_id'])) {
-                switch ($options['type']) {
-                    case self::INCIDENT_TYPE:
-                        if (!$cat->getField('is_incident')) {
-                             $options['itilcategories_id'] = 0;
-                        }
-                        break;
-
-                    case self::DEMAND_TYPE:
-                        if (!$cat->getField('is_request')) {
-                            $options['itilcategories_id'] = 0;
-                        }
-                        break;
-
-                    default:
-                        break;
-                }
-            }
-        }
-
         // Default check
         if ($ID > 0) {
             $this->check($ID, READ);
@@ -3879,6 +3852,34 @@ JAVASCRIPT;
                 $this->fields["entities_id"] = $first_entity;
                 // Pass to values
                 $options['entities_id']      = $first_entity;
+            }
+        }
+
+        // Check category / type validity
+        if ($options['itilcategories_id']) {
+            $cat = new ITILCategory();
+            if ($cat->getFromDB($options['itilcategories_id'])) {
+                switch ($options['type']) {
+                    case self::INCIDENT_TYPE:
+                        if (!$cat->getField('is_incident')) {
+                            $options['itilcategories_id'] = 0;
+                        }
+                        break;
+
+                    case self::DEMAND_TYPE:
+                        if (!$cat->getField('is_request')) {
+                            $options['itilcategories_id'] = 0;
+                        }
+                        break;
+
+                    default:
+                        break;
+                }
+                // Check category / entity validity
+                if (!in_array($cat->fields['entities_id'], getSonsOf('glpi_entities', $options['entities_id']))) {
+                    $options['itilcategories_id'] = 0;
+                    $this->fields['itilcategories_id'] = 0;
+                }
             }
         }
 
@@ -4529,42 +4530,69 @@ JAVASCRIPT;
                         break;
 
                     case "survey":
-                        $options['criteria'][0]['field']      = 12; // status
-                        $options['criteria'][0]['searchtype'] = 'equals';
-                        $options['criteria'][0]['value']      = self::CLOSED;
-                        $options['criteria'][0]['link']       = 'AND';
-
-                        $options['criteria'][1]['field']      = 60; // enquete generee
-                        $options['criteria'][1]['searchtype'] = 'contains';
-                        $options['criteria'][1]['value']      = '^';
-                        $options['criteria'][1]['link']       = 'AND';
-
-                        $options['criteria'][2]['field']      = 61; // date_answered
-                        $options['criteria'][2]['searchtype'] = 'contains';
-                        $options['criteria'][2]['value']      = 'NULL';
-                        $options['criteria'][2]['link']       = 'AND';
+                        $options['criteria'] = [
+                            [
+                                'field'       => 12, // status
+                                'searchtype'  => 'equals',
+                                'value'       => self::CLOSED,
+                                'link'        => 'AND'
+                            ],
+                            [
+                                'field'       => 60, // date_created
+                                'searchtype'  => 'empty',
+                                'value'       => 'NULL',
+                                'link'        => 'AND NOT'
+                            ],
+                            [
+                                'link'     => 'AND',
+                                'criteria' => [
+                                    [
+                                        'field'       => 72, // end_date
+                                        'searchtype'  => 'morethan',
+                                        'value'       => 'NOW',
+                                        'link'        => 'OR'
+                                    ],
+                                    [
+                                        'field'       => 72, // end_date
+                                        'searchtype'  => 'empty',
+                                        'value'       => 'NULL',
+                                        'link'        => 'OR'
+                                    ],
+                                ],
+                            ],
+                            [
+                                'field'       => 61, // date_answered
+                                'searchtype'  => 'empty',
+                                'value'       => 'NULL',
+                                'link'        => 'AND'
+                            ]
+                        ];
 
                         if (Session::haveRight('ticket', Ticket::SURVEY)) {
-                            $options['criteria'][3]['link']     = 'AND';
-                            $options['criteria'][3]['criteria'] = [
-                                [
-                                    'link'        => 'AND',
-                                    'field'       => 22, // author
-                                    'searchtype'  => 'equals',
-                                    'value'       => Session::getLoginUserID(),
-                                ],
-                                [
-                                    'link'        => 'OR',
-                                    'field'       => 4, // requester
-                                    'searchtype'  => 'equals',
-                                    'value'       => Session::getLoginUserID(),
+                            $options['criteria'][] = [
+                                'link'     => 'AND',
+                                'criteria' => [
+                                    [
+                                        'link'        => 'AND',
+                                        'field'       => 22, // author
+                                        'searchtype'  => 'equals',
+                                        'value'       => 'myself',
+                                    ],
+                                    [
+                                        'link'        => 'OR',
+                                        'field'       => 4, // requester
+                                        'searchtype'  => 'equals',
+                                        'value'       => 'myself',
+                                    ]
                                 ]
                             ];
                         } else {
-                            $options['criteria'][3]['field']        = 4; // requester
-                            $options['criteria'][3]['searchtype']   = 'equals';
-                            $options['criteria'][3]['value']        = Session::getLoginUserID();
-                            $options['criteria'][3]['link']         = 'AND';
+                            $options['criteria'][] = [
+                                'field' => 4, // requester
+                                'searchtype' => 'equals',
+                                'value' => 'myself',
+                                'link' => 'AND'
+                            ];
                         }
                         $forcetab                 = 'Ticket$3';
 
@@ -4646,9 +4674,8 @@ JAVASCRIPT;
                         ) {
                             foreach ($job->users[CommonITILActor::REQUESTER] as $d) {
                                 if ($d["users_id"] > 0) {
-                                    $userdata = getUserName($d["users_id"], 2);
                                     $name = '<i class="fas fa-sm fa-fw fa-user text-muted me-1"></i>' .
-                                        $userdata['name'];
+                                        htmlescape(getUserName($d["users_id"]));
                                     $requesters[] = $name;
                                 } else {
                                     $requesters[] = '<i class="fas fa-sm fa-fw fa-envelope text-muted me-1"></i>' .
@@ -4822,7 +4849,7 @@ JAVASCRIPT;
 
         if (Session::getCurrentInterface() != "central") {
             $twig_params['title']['button'] = [
-                'link'   => $CFG_GLPI["root_doc"] . '/front/helpdesk.public.php?create_ticket=1',
+                'link'   => $CFG_GLPI["root_doc"] . '/ServiceCatalog',
                 'text'   => __('Create a ticket'),
                 'icon'   => 'ti ti-plus',
             ];
@@ -4925,9 +4952,9 @@ JAVASCRIPT;
 
             echo "<div class='center'><table class='tab_cadre_fixe' style='min-width: 85%'>";
            //TRANS: %d is the number of new tickets
-            echo "<tr><th colspan='12'>" . sprintf(_n('%d new ticket', '%d new tickets', $number), $number);
+            echo "<tr><th colspan='12'>" . sprintf(_sn('%d new ticket', '%d new tickets', $number), $number);
             echo "<a href='" . Ticket::getSearchURL() . "?" .
-                Toolbox::append_params($options, '&amp;') . "'>" . __('Show all') . "</a>";
+                Toolbox::append_params($options, '&amp;') . "'>" . __s('Show all') . "</a>";
             echo "</th></tr>";
 
             self::commonListHeader(Search::HTML_OUTPUT);
@@ -4940,7 +4967,7 @@ JAVASCRIPT;
         } else {
             echo "<div class='center'>";
             echo "<table class='tab_cadre_fixe' style='min-width: 85%'>";
-            echo "<tr><th>" . __('No ticket found.') . "</th></tr>";
+            echo "<tr><th>" . __s('No ticket found.') . "</th></tr>";
             echo "</table>";
             echo "</div><br>";
         }
@@ -4954,7 +4981,7 @@ JAVASCRIPT;
      * @param CommonDBTM $item         CommonDBTM object
      * @param integer    $withtemplate (default 0)
      *
-     * @return void (display a table)
+     * @return void|false (display a table)
      **/
     public static function showListForItem(CommonDBTM $item, $withtemplate = 0)
     {
@@ -4979,8 +5006,8 @@ JAVASCRIPT;
 
         $options = [
             'metacriteria' => [],
-            'restrict' => [],
-            'criteria' => [],
+            'restrict' => $restrict,
+            'criteria' => $criteria,
             'reset'    => 'reset'
         ];
 
@@ -4999,9 +5026,9 @@ JAVASCRIPT;
                 if ($item->haveChildren()) {
                     $tree = Session::getSavedOption(__CLASS__, 'tree', 0);
                     echo "<table class='tab_cadre_fixe'>";
-                    echo "<tr class='tab_bg_1'><th>" . __('Last tickets') . "</th></tr>";
+                    echo "<tr class='tab_bg_1'><th>" . __s('Last tickets') . "</th></tr>";
                     echo "<tr class='tab_bg_1'><td class='center'>";
-                    echo __('Child groups') . "&nbsp;";
+                    echo __s('Child groups') . "&nbsp;";
                     Dropdown::showYesNo(
                         'tree',
                         $tree,
@@ -5036,7 +5063,7 @@ JAVASCRIPT;
         $rand = mt_rand();
         if ($job->getFromDBwithData($ID)) {
             $bgcolor = $_SESSION["glpipriority_" . $job->fields["priority"]];
-            $name    = sprintf(__('%1$s: %2$s'), __('ID'), $job->fields["id"]);
+            $name    = htmlescape(sprintf(__('%1$s: %2$s'), __('ID'), $job->fields["id"]));
            // $rand    = mt_rand();
             echo "<tr class='tab_bg_2'>";
             echo "<td>
@@ -5051,22 +5078,23 @@ JAVASCRIPT;
                 && count($job->users[CommonITILActor::REQUESTER])
             ) {
                 foreach ($job->users[CommonITILActor::REQUESTER] as $d) {
-                    if ($d["users_id"] > 0) {
-                        $userdata = getUserName($d["users_id"], 2);
-                        $name     = "<span class='b'>" . $userdata['name'] . "</span>";
+                    $user = new User();
+                    if ($d["users_id"] > 0 && $user->getFromDB($d["users_id"])) {
+                        $name     = "<span class='b'>" . htmlescape($user->getName()) . "</span>";
                         $name     = sprintf(
                             __('%1$s %2$s'),
                             $name,
                             Html::showToolTip(
-                                $userdata["comment"],
-                                ['link'    => $userdata["link"],
+                                $user->getInfoCard(),
+                                [
+                                    'link'    => $user->getLinkURL(),
                                     'display' => false
                                 ]
                             )
                         );
                          echo $name;
                     } else {
-                        echo $d['alternative_email'] . "&nbsp;";
+                        echo htmlescape($d['alternative_email']) . "&nbsp;";
                     }
                     echo "<br>";
                 }
@@ -5096,27 +5124,27 @@ JAVASCRIPT;
                     }
                 }
             } else {
-                echo __('General');
+                echo __s('General');
             }
             echo "<td>";
 
-            $link = "<a id='ticket" . $job->fields["id"] . $rand . "' href='" . Ticket::getFormURLWithID($job->fields["id"]);
+            $link = "<a id='ticket" . htmlescape($job->fields["id"] . $rand) . "' href='" . Ticket::getFormURLWithID($job->fields["id"]);
             if ($forcetab != '') {
                 $link .= "&amp;forcetab=" . $forcetab;
             }
             $link   .= "'>";
-            $link   .= "<span class='b'>" . $job->getNameID() . "</span></a>";
+            $link   .= "<span class='b'>" . htmlescape($job->getNameID()) . "</span></a>";
             $link    = sprintf(
-                __('%1$s (%2$s)'),
+                __s('%1$s (%2$s)'),
                 $link,
                 sprintf(
-                    __('%1$s - %2$s'),
+                    __s('%1$s - %2$s'),
                     $job->numberOfFollowups($showprivate),
                     $job->numberOfTasks($showprivate)
                 )
             );
-            $link    = printf(
-                __('%1$s %2$s'),
+            $link    = sprintf(
+                __s('%1$s %2$s'),
                 $link,
                 Html::showToolTip(
                     RichText::getEnhancedHtml($job->fields['content']),
@@ -5125,13 +5153,14 @@ JAVASCRIPT;
                     ]
                 )
             );
+            echo $link;
             echo "</td>";
 
            // Finish Line
             echo "</tr>";
         } else {
             echo "<tr class='tab_bg_2'>";
-            echo "<td colspan='6' ><i>" . __('No ticket in progress.') . "</i></td></tr>";
+            echo "<td colspan='6' ><i>" . __s('No ticket in progress.') . "</i></td></tr>";
         }
     }
 
@@ -5479,7 +5508,7 @@ JAVASCRIPT;
                 'long'  => __('Steal a ticket')
             ];
                                                //TRANS: short for : To be in charge of a ticket
-            $values[self::OWN]            = ['short' => __('Beeing in charge'),
+            $values[self::OWN]            = ['short' => __('Be in charge'),
                 'long'  => __('To be in charge of a ticket')
             ];
             $values[self::CHANGEPRIORITY] = __('Change the priority');

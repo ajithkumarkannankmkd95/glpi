@@ -121,13 +121,21 @@ class HtmlTest extends \GLPITestCase
          'If the string is not truncated, well... We\'re wrong and got a very serious issue in our codebase!' .
          'And if the string has been correctly truncated, well... All is ok then, let\'s show if all the other tests are OK :)';
         $expected = 'This is a very long string which will be truncated by a dedicated method. ' .
-         'If the string is not truncated, well... We\'re wrong and got a very serious issue in our codebase!' .
-         'And if the string has been correctly truncated, well... All is ok then, let\'s show i&nbsp;(...)';
+         'If the string is not truncated, well... We&#039;re wrong and got a very serious issue in our codebase!' .
+         'And if the string has been correctly truncated, well... All is ok then, let&#039;s show i&nbsp;(...)';
         $this->assertSame($expected, \Html::resume_text($origin));
 
         $origin = 'A string that is longer than 10 characters.';
         $expected = 'A string t&nbsp;(...)';
         $this->assertSame($expected, \Html::resume_text($origin, 10));
+
+        $origin = 'A string that contains HTML special chars like >, < and &, and some text that should be truncated.';
+        $expected = 'A string that contains HTML special chars like &gt;, &lt; and &amp;, a&nbsp;(...)';
+        $this->assertSame($expected, \Html::resume_text($origin, 60));
+
+        $origin = 'A string that contains HTML special chars like >, < and &, and some text that should NOT be truncated.';
+        $expected = 'A string that contains HTML special chars like &gt;, &lt; and &amp;, and some text that should NOT be truncated.';
+        $this->assertSame($expected, \Html::resume_text($origin, 1500));
     }
 
     public function testFormatNumber()
@@ -698,16 +706,21 @@ class HtmlTest extends \GLPITestCase
 
     public function testDisplayBackLink()
     {
-        ob_start();
-        \Html::displayBackLink();
-        $output = ob_get_clean();
-        $this->assertSame("<a href='javascript:history.back();'>Back</a>", $output);
+        /** @var array $CFG_GLPI */
+        global $CFG_GLPI;
 
-        $_SERVER['HTTP_REFERER'] = 'originalpage.html';
+        $CFG_GLPI['url_base'] = 'http://localhost/glpi';
+
         ob_start();
         \Html::displayBackLink();
         $output = ob_get_clean();
-        $this->assertSame('<a href="originalpage.html">Back</a>', $output);
+        $this->assertSame('<a href="http://localhost/glpi">Back</a>', $output);
+
+        $_SERVER['HTTP_REFERER'] = 'http://localhost/glpi/originalpage.html';
+        ob_start();
+        \Html::displayBackLink();
+        $output = ob_get_clean();
+        $this->assertSame('<a href="http://localhost/glpi/originalpage.html">Back</a>', $output);
         $_SERVER['HTTP_REFERER'] = ''; // reset referer to prevent having this var in test loop mode
     }
 
@@ -832,36 +845,97 @@ class HtmlTest extends \GLPITestCase
         $this->assertSame($expected, \Html::input($name, $options));
     }
 
-    public static function providerGetBackUrl()
+    public static function providerGetRefererUrl(): iterable
     {
-        return [
-            [
-                "http://localhost/glpi/front/change.form.php?id=1&forcetab=Change$2",
-                "http://localhost/glpi/front/change.form.php?id=1",
-            ],
-            [
-                "http://localhost/glpi/front/change.form.php?id=1",
-                "http://localhost/glpi/front/change.form.php?id=1",
-            ],
-            [
-                "https://test/test/test.php?param1=1&param2=2&param3=3",
-                "https://test/test/test.php?param1=1&param2=2&param3=3",
-            ],
-            [
-                "/front/computer.php?id=15&forcetab=test&ok=1",
-                "/front/computer.php?id=15&ok=1",
-            ],
-            [
-                "/front/computer.php?forcetab=test",
-                "/front/computer.php",
-            ],
+        // Basic cases
+        yield 'http://example.org/' => [
+            'referer'  => 'http://example.org/',
+            'expected' => 'http://example.org/',
+        ];
+        yield 'http://localhost/glpi/front/change.form.php?id=1' => [
+            'referer'  => 'http://localhost/glpi/front/change.form.php?id=1',
+            'expected' => 'http://localhost/glpi/front/change.form.php?id=1',
+        ];
+
+        // Invalid referer
+        yield '/invalid/referer' => [
+            'referer'  => '/invalid/referer',
+            'expected' => null,
+        ];
+        yield '' => [
+            'referer'  => '',
+            'expected' => null,
+        ];
+    }
+
+    #[dataProvider('providerGetRefererUrl')]
+    public function testGetRefererUrl(string $referer, ?string $expected): void
+    {
+        $_SERVER['HTTP_REFERER'] = $referer;
+        $this->assertSame($expected, \Html::getRefererUrl());
+    }
+
+    public static function providerGetBackUrl(): iterable
+    {
+        // Basic cases
+        yield 'http://localhost/glpi/front/change.form.php?id=1' => [
+            'referer'  => 'http://localhost/glpi/front/change.form.php?id=1',
+            'base_url' => 'http://localhost/glpi',
+            'expected' => 'http://localhost/glpi/front/change.form.php?id=1',
+        ];
+        yield 'http://localhost/glpi/test.php?param1=1&param2=2&param3=3' => [
+            'referer'  => 'http://localhost/glpi/test.php?param1=1&param2=2&param3=3',
+            'base_url' => 'http://localhost/glpi',
+            'expected' => 'http://localhost/glpi/test.php?param1=1&param2=2&param3=3',
+        ];
+
+        // `forcetab` param stripping
+        yield 'http://localhost/glpi/front/change.form.php?id=1&forcetab=Change$2' => [
+            'referer'  => 'http://localhost/glpi/front/change.form.php?id=1&forcetab=Change$2',
+            'base_url' => 'http://localhost/glpi',
+            'expected' => 'http://localhost/glpi/front/change.form.php?id=1',
+        ];
+        yield 'http://localhost/glpi/test.php?param1=1&param2=2&forcetab=test&param3=3' => [
+            'referer'  => 'http://localhost/glpi/test.php?param1=1&param2=2&forcetab=test&param3=3',
+            'base_url' => 'http://localhost/glpi',
+            'expected' => 'http://localhost/glpi/test.php?param1=1&param2=2&param3=3',
+        ];
+
+        // Prevent switch between http and https schemes
+        yield 'http://localhost/glpi/front/computer.form.php?id=1' => [
+            'referer'  => 'http://localhost/glpi/front/computer.form.php?id=1',
+            'base_url' => 'https://localhost/glpi',
+            'expected' => 'http://localhost/glpi/front/computer.form.php?id=1'
+        ];
+        yield 'https://localhost/glpi/front/computer.form.php?id=1' => [
+            'referer'  => 'https://localhost/glpi/front/computer.form.php?id=1',
+            'base_url' => 'http://localhost/glpi',
+            'expected' => 'https://localhost/glpi/front/computer.form.php?id=1',
+        ];
+
+        // Invalid referer
+        yield '/invalid/referer' => [
+            'referer'  => '/invalid/referer',
+            'base_url' => 'http://localhost/glpi',
+            'expected' => 'http://localhost/glpi',
+        ];
+        yield '' => [
+            'referer'  => '',
+            'base_url' => 'http://localhost/glpi',
+            'expected' => 'http://localhost/glpi',
         ];
     }
 
     #[dataProvider('providerGetBackUrl')]
-    public function testGetBackUrl($url_in, $url_out)
+    public function testGetBackUrl(string $referer, string $base_url, string $expected): void
     {
-        $this->assertSame($url_out, \Html::getBackUrl($url_in));
+        /** @var array $CFG_GLPI */
+        global $CFG_GLPI;
+
+        $_SERVER['HTTP_REFERER'] = $referer;
+        $CFG_GLPI['url_base'] = $base_url;
+
+        $this->assertSame($expected, \Html::getBackUrl());
     }
 
     public function testGetScssFileHash()

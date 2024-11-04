@@ -36,13 +36,13 @@ namespace Glpi\Controller;
 
 use Glpi\Api\APIRest;
 use Glpi\Application\ErrorHandler;
+use Glpi\Http\HeaderlessStreamedResponse;
 use Glpi\Security\Attribute\SecurityStrategy;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Attribute\Route;
 
-final readonly class ApiRestController implements Controller
+final class ApiRestController extends AbstractController
 {
     #[Route(
         "/apirest.php{request_parameters}",
@@ -56,7 +56,7 @@ final readonly class ApiRestController implements Controller
     {
         $_SERVER['PATH_INFO'] = $request->get('request_parameters');
 
-        return new StreamedResponse(function () {
+        return new HeaderlessStreamedResponse(function () {
             // Ensure errors will not break API output.
             ErrorHandler::getInstance()->disableOutput();
 

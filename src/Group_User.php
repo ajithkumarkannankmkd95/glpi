@@ -411,9 +411,14 @@ class Group_User extends CommonDBRelation
         $used    = [];
         $ids     = [];
 
+        self::getDataForGroup($group, $used, $ids, $_GET['filters'] ?? [], true, false);
+        $all_groups = count($used);
+        $used    = [];
+        $ids     = [];
+
        // Retrieve member list
        // TODO: migrate to use CommonDBRelation::getListForItem()
-        $entityrestrict = self::getDataForGroup($group, $used, $ids, $_GET['filters'] ?? [], true, false);
+        $entityrestrict = self::getDataForGroup($group, $used, $ids, $_GET['filters'] ?? [], true, true);
 
         // We will load implicits members from parents groups and display
         // them after all the "direct" members
@@ -442,6 +447,15 @@ class Group_User extends CommonDBRelation
         $start  = (isset($_GET['start']) ? (int) $_GET['start'] : 0);
         if ($start >= $number) {
             $start = 0;
+        }
+
+        if ($number != $all_groups) {
+            echo "<div class='alert alert-primary d-flex align-items-center mb-4' role='alert'>";
+            echo "<i class='ti ti-info-circle fa-xl'></i>";
+            echo "<span class='ms-2'>";
+            echo __s("Some users are not listed as they are not visible from your current entity.");
+            echo "</span>";
+            echo "</div>";
         }
 
         $tmpgrp = new Group();
@@ -621,6 +635,33 @@ class Group_User extends CommonDBRelation
             'field'              => 'is_userdelegate',
             'name'               => __('Delegatee'),
             'datatype'           => 'bool'
+        ];
+
+        return $tab;
+    }
+
+    public static function rawSearchOptionsToAdd($itemtype = null)
+    {
+        $tab = [];
+        $name = _n('User', 'Users', Session::getPluralNumber());
+
+        $tab[] = [
+            'id'                 => 'user',
+            'name'               => $name
+        ];
+
+        $tab[] = [
+            'id'                 => '150',
+            'table'              => 'glpi_groups_users',
+            'field'              => 'id',
+            'name'               => _x('quantity', 'Number of users'),
+            'forcegroupby'       => true,
+            'usehaving'          => true,
+            'datatype'           => 'count',
+            'massiveaction'      => false,
+            'joinparams'         => [
+                'jointype'           => 'child',
+            ]
         ];
 
         return $tab;

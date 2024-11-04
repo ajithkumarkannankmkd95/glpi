@@ -66,14 +66,14 @@ function header_html($etape)
     echo Html::getCoreVariablesForJavascript();
 
     // LIBS
-    echo Html::script("public/lib/base.js");
-    echo Html::script("public/lib/fuzzy.js");
+    echo Html::script("lib/base.js");
+    echo Html::script("lib/fuzzy.js");
     echo Html::script("js/common.js");
     echo Html::script("js/glpi_dialog.js");
 
     // CSS
-    echo Html::css('public/lib/tabler.css');
-    echo Html::css('public/lib/base.css');
+    echo Html::css('lib/tabler.css');
+    echo Html::css('lib/base.css');
     echo Html::scss("css/install", [], true);
     echo "</head>";
     echo "<body>";
@@ -418,6 +418,7 @@ function step7()
 function step8()
 {
     include_once(GLPI_CONFIG_DIR . "/config_db.php");
+    /** @var DBmysql $DB */
     $DB = new DB();
 
     if (isset($_POST['send_stats'])) {
@@ -429,7 +430,10 @@ function step8()
         );
     }
 
-    $url_base = str_replace("/install/install.php", "", $_SERVER['HTTP_REFERER']);
+    $referer_url = Html::getRefererUrl();
+    $url_base = $referer_url !== null
+        ? str_replace("/install/install.php", "", $referer_url)
+        : 'http://localhost';
     $DB->update(
         'glpi_configs',
         ['value' => $url_base],
@@ -535,7 +539,6 @@ function checkConfigFile()
     }
 
     Html::redirect($CFG_GLPI['root_doc'] . "/index.php");
-    die();
 }
 
 if (!isset($_SESSION['can_process_install']) || !isset($_POST["install"])) {

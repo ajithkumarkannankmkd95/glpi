@@ -62,7 +62,11 @@ class ManualLink extends CommonDBChild
     {
 
         $count = 0;
-        if ($_SESSION['glpishow_count_on_tabs'] && !$item->isNewItem()) {
+        if (
+            $_SESSION['glpishow_count_on_tabs']
+            && ($item instanceof CommonDBTM)
+            && !$item->isNewItem()
+        ) {
             $count += countElementsInTable(
                 'glpi_manuallinks',
                 [
@@ -198,7 +202,6 @@ class ManualLink extends CommonDBChild
         switch ($field) {
             case '_virtual':
                 return self::getLinkHtml($values);
-            break;
         }
         return parent::getSpecificValueToDisplay($field, $values, $options);
     }
@@ -220,13 +223,13 @@ class ManualLink extends CommonDBChild
         $html = '';
 
         $target = $fields['open_window'] == 1 ? '_blank' : '_self';
-        $html .= '<a href="' . htmlspecialchars($fields['url']) . '" target="' . $target . '">';
+        $html .= '<a href="' . htmlescape($fields['url']) . '" target="' . $target . '">';
         if (!empty($fields['icon'])) {
             // Forces font family values to fallback on ".fab" family font if char is not available in ".fas" family.
-            $html .= '<i class="fa-lg fa-fw fa ' . htmlspecialchars($fields['icon']) . '"'
+            $html .= '<i class="fa-lg fa-fw fa ' . htmlescape($fields['icon']) . '"'
             . ' style="font-family:\'Font Awesome 6 Free\', \'Font Awesome 6 Brands\';"></i>&nbsp;';
         }
-        $html .= htmlspecialchars(!empty($fields['name']) ? $fields['name'] : $fields['url']);
+        $html .= htmlescape(!empty($fields['name']) ? $fields['name'] : $fields['url']);
         $html .= '</a>';
 
         return $html;

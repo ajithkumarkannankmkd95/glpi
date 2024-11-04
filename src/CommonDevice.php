@@ -48,13 +48,14 @@ abstract class CommonDevice extends CommonDropdown
    // From CommonDBTM
     public $dohistory           = true;
 
-    public $first_level_menu  = "config";
-    public $second_level_menu = "commondevice";
-    public $third_level_menu  = "";
-
     public static function getTypeName($nb = 0)
     {
         return _n('Component', 'Components', $nb);
+    }
+
+    public static function getSectorizedDetails(): array
+    {
+        return ['config', self::class, static::class];
     }
 
     /**
@@ -62,14 +63,30 @@ abstract class CommonDevice extends CommonDropdown
      *
      * @since 0.85
      *
-     * @return array Array of the types of CommonDevice available
+     * @return array
+     * @phpstan-return class-string<CommonDevice>[]
      **/
     public static function getDeviceTypes()
     {
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
-        return $CFG_GLPI['device_types'];
+        $valid_types = [];
+
+        foreach ($CFG_GLPI['device_types'] as $device_class) {
+            if (!is_a($device_class, self::class, true)) {
+                // Invalid type registered by a plugin.
+                trigger_error(
+                    sprintf('Invalid device type `%s`.', $device_class),
+                    E_USER_WARNING
+                );
+                continue;
+            }
+
+            $valid_types[] = $device_class;
+        }
+
+        return $valid_types;
     }
 
     /**
@@ -345,8 +362,8 @@ abstract class CommonDevice extends CommonDropdown
     public static function getHTMLTableHeader(
         $itemtype,
         HTMLTableBase $base,
-        HTMLTableSuperHeader $super = null,
-        HTMLTableHeader $father = null,
+        ?HTMLTableSuperHeader $super = null,
+        ?HTMLTableHeader $father = null,
         array $options = []
     ) {
         if (isset($options['dont_display'][static::class])) {
@@ -384,9 +401,9 @@ abstract class CommonDevice extends CommonDropdown
      * @since 0.84
      */
     public function getHTMLTableCellForItem(
-        HTMLTableRow $row = null,
-        CommonDBTM $item = null,
-        HTMLTableCell $father = null,
+        ?HTMLTableRow $row = null,
+        ?CommonDBTM $item = null,
+        ?HTMLTableCell $father = null,
         array $options = []
     ) {
 

@@ -33,6 +33,7 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Asset\AssetDefinitionManager;
 use Glpi\Tests\Log\TestHandler;
 use Monolog\Level;
 use Monolog\Logger;
@@ -62,6 +63,9 @@ class GLPITestCase extends TestCase
     public function setUp(): void
     {
         $this->storeGlobals();
+
+        global $DB;
+        $DB->setTimezone('UTC');
 
         // By default, no session, not connected
         $this->resetSession();
@@ -409,6 +413,30 @@ class GLPITestCase extends TestCase
         return getItemByTypeName('Entity', '_test_root_entity', $only_id);
     }
 
+    /**
+     * Get the raw database handle object.
+     *
+     * Useful when you need to run some queries that may not be allowed by
+     * the DBMysql object.
+     *
+     * @return mysqli
+     */
+    protected function getDbHandle(): mysqli
+    {
+        /** @var \DBmysql $db */
+        global $DB;
+
+        $reflection = new ReflectionClass(\DBmysql::class);
+        $property = $reflection->getProperty("dbh");
+        $property->setAccessible(true);
+        return $property->getValue($DB);
+    }
+
+    /**
+     * Store Globals
+     *
+     * @return void
+     */
     private function storeGlobals(): void
     {
         global $CFG_GLPI;
@@ -418,6 +446,11 @@ class GLPITestCase extends TestCase
         }
     }
 
+    /**
+     * Reset globals and static variables
+     *
+     * @return void
+     */
     private function resetGlobalsAndStaticValues(): void
     {
         // Globals
@@ -426,5 +459,23 @@ class GLPITestCase extends TestCase
 
         // Statics values
         Log::$use_queue = false;
+        CommonDBTM::clearSearchOptionCache();
+        \Glpi\Search\SearchOption::clearSearchOptionCache();
+        AssetDefinitionManager::unsetInstance();
+        Dropdown::resetItemtypesStaticCache();
+    }
+
+    /**
+     * Apply a DateTime modification using the given string.
+     * Examples:
+     * - $this->modifyCurrentTime('+1 second');
+     * - $this->modifyCurrentTime('+5 hours');
+     * - $this->modifyCurrentTime('-2 years');
+     */
+    protected function modifyCurrentTime(string $modification): void
+    {
+        $date = new DateTime(Session::getCurrentTime());
+        $date->modify($modification);
+        $_SESSION['glpi_currenttime'] = $date->format("Y-m-d H:i:s");
     }
 }

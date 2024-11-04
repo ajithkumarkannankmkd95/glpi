@@ -41,8 +41,14 @@ final class ConfigurationConstants
     {
     }
 
-    public function computeConstants(): void
+    public function computeConstants(?string $env = null): void
     {
+        if ($env !== null) {
+            // Force the `GLPI_ENVIRONMENT_TYPE` constant.
+            // The value defined in the server env variables will be ignored.
+            define('GLPI_ENVIRONMENT_TYPE', $env);
+        }
+
         // Define GLPI_* constants that can be customized by admin.
         //
         // Use a self-invoking anonymous function to:
@@ -110,7 +116,6 @@ final class ConfigurationConstants
                 // Other constants
                 'GLPI_AJAX_DASHBOARD'         => '1', // 1 for "multi ajax mode" 0 for "single ajax mode" (see Glpi\Dashboard\Grid::getCards)
                 'GLPI_CALDAV_IMPORT_STATE'    => 0, // external events created from a caldav client will take this state by default (0 = Planning::INFO)
-                'GLPI_DEMO_MODE'              => '0',
                 'GLPI_CENTRAL_WARNINGS'       => '1', // display (1), or not (0), warnings on GLPI Central page
                 'GLPI_TEXT_MAXSIZE'           => '4000' // character threshold for displaying read more button
             ],
@@ -163,9 +168,6 @@ final class ConfigurationConstants
                     implode('`, `', $allowed_envs)
                 )
             );
-        }
-        if (defined('PLUGINS_DIRECTORIES') && !is_array(PLUGINS_DIRECTORIES)) {
-            throw new \Exception('PLUGINS_DIRECTORIES constant value must be an array');
         }
 
         // Configure environment type if not defined by user.

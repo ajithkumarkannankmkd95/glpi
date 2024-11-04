@@ -131,7 +131,6 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
                     $ma->itemDone($item->getType(), $ids, MassiveAction::ACTION_KO);
                 }
                 return;
-            break;
 
             case 'change_count_method':
                 if ($item->setDoCount($ids, $input['do_count'])) {
@@ -579,7 +578,7 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
                     && Session::getCurrentInterface() != "helpdesk"
                 ) {
                     Session::addMessageAfterRedirect(
-                        htmlspecialchars(sprintf(__('Partial load of the saved search: %s'), $this->getName())),
+                        htmlescape(sprintf(__('Partial load of the saved search: %s'), $this->getName())),
                         false,
                         ERROR
                     );
@@ -792,7 +791,7 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
      *
      * @return array
      */
-    public function getMine(string $itemtype = null, bool $inverse = false, bool $enable_partial_warnings = true): array
+    public function getMine(?string $itemtype = null, bool $inverse = false, bool $enable_partial_warnings = true): array
     {
         /** @var \DBmysql $DB */
         global $DB;
@@ -889,7 +888,7 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
                 try {
                     $search_data = $this->execute(false, $enable_partial_warnings);
                 } catch (\Throwable $e) {
-                    ErrorHandler::getInstance()->handleException($e);
+                    ErrorHandler::getInstance()->handleException($e, false);
                     $error = true;
                 }
 
@@ -956,7 +955,7 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
      *
      * @return void
      */
-    public function displayMine(string $itemtype = null, bool $inverse = false, bool $enable_partial_warnings = true)
+    public function displayMine(?string $itemtype = null, bool $inverse = false, bool $enable_partial_warnings = true)
     {
         TemplateRenderer::getInstance()->display('layout/parts/saved_searches_list.html.twig', [
             'active'         => $_SESSION['glpi_loaded_savedsearch'] ?? "",
@@ -1242,7 +1241,7 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
                               $DB->executeStatement($stmt);
                         }
                     } catch (\Throwable $e) {
-                        ErrorHandler::getInstance()->handleException($e);
+                        ErrorHandler::getInstance()->handleException($e, false);
                     }
                 }
 

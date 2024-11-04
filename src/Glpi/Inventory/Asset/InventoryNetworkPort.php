@@ -108,6 +108,10 @@ trait InventoryNetworkPort
      */
     public function handlePorts($itemtype = null, $items_id = null)
     {
+        if (!$this->checkPortsConf($this->conf)) {
+            return;
+        }
+
         $this->itemtype = $itemtype ?? $this->item->getType();
         $this->items_id = $items_id ?? $this->item->fields['id'];
 
@@ -499,7 +503,7 @@ trait InventoryNetworkPort
                         }
                     }
 
-                    if (!$this->isMainPartial() && count($db_addresses) && count($ips)) {
+                    if (count($db_addresses) && count($ips)) {
                         $ipaddress = new IPAddress();
                         //deleted IP addresses
                         foreach (array_keys($db_addresses) as $id_ipa) {
@@ -526,7 +530,7 @@ trait InventoryNetworkPort
         }
 
         //delete remaining network ports, if any
-        if (!$this->isMainPartial() && count($db_ports)) {
+        if (count($db_ports)) {
             foreach ($db_ports as $netpid => $netpdata) {
                 if ($netpdata['name'] != 'management') { //prevent removing internal management port
                     $networkport->delete(['id' => $netpid], true);
@@ -678,8 +682,10 @@ trait InventoryNetworkPort
        //does nothing
     }
 
-    public function checkConf(Conf $conf): bool
+    public function checkPortsConf(Conf $conf): bool
     {
-        return $conf->component_networkcard == 1;
+        /** @var array $CFG_GLPI */
+        global $CFG_GLPI;
+        return $conf->component_networkcard == 1 && in_array($this->item::class, $CFG_GLPI['networkport_types']);
     }
 }

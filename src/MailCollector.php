@@ -102,11 +102,20 @@ class MailCollector extends CommonDBTM
         'passwd',
     ];
 
+    public $history_blacklist = [
+        'errors',
+        'last_collect_date',
+    ];
+
     public static function getTypeName($nb = 0)
     {
         return _n('Receiver', 'Receivers', $nb);
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return ['config', self::class];
+    }
 
     public static function canCreate(): bool
     {
@@ -126,7 +135,7 @@ class MailCollector extends CommonDBTM
         if (static::canView()) {
             return [
                 'options' => [
-                    'notimportedemail' => [
+                    NotImportedEmail::class => [
                         'links' => [
                             'search' => '/front/notimportedemail.php',
                         ],
@@ -239,7 +248,7 @@ class MailCollector extends CommonDBTM
             $connected = true;
             $folders = $this->storage->getFolders();
         } catch (\Throwable $e) {
-            ErrorHandler::getInstance()->handleException($e);
+            ErrorHandler::getInstance()->handleException($e, false);
         }
         TemplateRenderer::getInstance()->display('pages/setup/mailcollector/folder_list.html.twig', [
             'item' => $this,
@@ -403,7 +412,7 @@ class MailCollector extends CommonDBTM
                 try {
                      $collector->connect();
                 } catch (\Throwable $e) {
-                    ErrorHandler::getInstance()->handleException($e);
+                    ErrorHandler::getInstance()->handleException($e, false);
                     continue;
                 }
 
@@ -460,7 +469,7 @@ class MailCollector extends CommonDBTM
                     foreach ($rejected as $id => $data) {
                         if ($action == 1) {
                             Session::addMessageAfterRedirect(
-                                htmlspecialchars(sprintf(
+                                htmlescape(sprintf(
                                     __('Email %s not found. Impossible import.'),
                                     strtr($id, $clean)
                                 )),
@@ -486,7 +495,7 @@ class MailCollector extends CommonDBTM
      *
      * @return string|void
      **/
-    public function collect($mailgateID, $display = 0)
+    public function collect($mailgateID, $display = false)
     {
         /**
          * @var array $CFG_GLPI
@@ -500,9 +509,9 @@ class MailCollector extends CommonDBTM
             try {
                 $this->connect();
             } catch (\Throwable $e) {
-                ErrorHandler::getInstance()->handleException($e);
+                ErrorHandler::getInstance()->handleException($e, true);
                 Session::addMessageAfterRedirect(
-                    __s('An error occurred trying to connect to collector.') . "<br/>" . htmlspecialchars($e->getMessage()),
+                    __s('An error occurred trying to connect to collector.') . "<br/>" . htmlescape($e->getMessage()),
                     false,
                     ERROR
                 );
@@ -577,7 +586,7 @@ class MailCollector extends CommonDBTM
 
                         $messages[$message_id] = $message;
                     } catch (\Throwable $e) {
-                        ErrorHandler::getInstance()->handleException($e);
+                        ErrorHandler::getInstance()->handleException($e, false);
                         Toolbox::logInFile(
                             'mailgate',
                             sprintf(
@@ -625,7 +634,7 @@ class MailCollector extends CommonDBTM
                         }
                     } catch (\Throwable $e) {
                         $error++;
-                        ErrorHandler::getInstance()->handleException($e);
+                        ErrorHandler::getInstance()->handleException($e, false);
                         Toolbox::logInFile(
                             'mailgate',
                             sprintf(
@@ -789,14 +798,14 @@ class MailCollector extends CommonDBTM
                     $blacklisted
                 );
                 if ($display) {
-                     Session::addMessageAfterRedirect(htmlspecialchars($msg), false, ($error ? ERROR : INFO));
+                     Session::addMessageAfterRedirect(htmlescape($msg), false, ($error ? ERROR : INFO));
                 } else {
                     return $msg;
                 }
             } else {
                 $msg = __('Could not connect to mailgate server');
                 if ($display) {
-                    Session::addMessageAfterRedirect(htmlspecialchars($msg), false, ERROR);
+                    Session::addMessageAfterRedirect(htmlescape($msg), false, ERROR);
                     GLPINetwork::addErrorMessageAfterRedirect();
                 } else {
                     return $msg;
@@ -806,7 +815,7 @@ class MailCollector extends CommonDBTM
            //TRANS: %s is the ID of the mailgate
             $msg = sprintf(__('Could not find mailgate %d'), $mailgateID);
             if ($display) {
-                Session::addMessageAfterRedirect(htmlspecialchars($msg), false, ERROR);
+                Session::addMessageAfterRedirect(htmlescape($msg), false, ERROR);
                 GLPINetwork::addErrorMessageAfterRedirect();
             } else {
                 return $msg;
@@ -1136,7 +1145,7 @@ class MailCollector extends CommonDBTM
        // Wrap content for blacklisted items
         $cleaned_count = 0;
         $itemstoclean = [];
-        $blacklisted_contents = $DB->request(['FROM' => 'glpi_blacklistedmailcontents']);
+        $blacklisted_contents = $DB->request(['FROM' => BlacklistedMailContent::getTable()]);
         foreach ($blacklisted_contents as $data) {
             $toclean = trim($data['content']);
             if (!empty($toclean)) {
@@ -1823,7 +1832,7 @@ class MailCollector extends CommonDBTM
             $content .= sprintf('(%s)', $mailer::buildDsn(false));
         }
 
-        $collectors = $DB->request(['FROM' => 'glpi_mailcollectors']);
+        $collectors = $DB->request(['FROM' => self::getTable()]);
         foreach ($collectors as $mc) {
             $content .= "\nName: '" . $mc['name'] . "'";
             $content .= "\n\tActive: " . ($mc['is_active'] ? "Yes" : "No");
@@ -1876,8 +1885,8 @@ class MailCollector extends CommonDBTM
             foreach ($errors as $data) {
                 $collector->getFromDB($data['id']);
                 $servers[] = [
-                    'link' => htmlspecialchars($collector->getLinkURL()),
-                    'name' => htmlspecialchars($collector->getName(['complete' => true]))
+                    'link' => htmlescape($collector->getLinkURL()),
+                    'name' => htmlescape($collector->getName(['complete' => true]))
                 ];
             }
         }
@@ -2058,7 +2067,9 @@ TWIG, ['receivers_error_msg' => sprintf(__s('Receivers in error: %s'), $server_l
      *
      * @see NotificationTarget::getMessageIdForEvent()
      *
-     * @return string
+     * @param string $header
+     *
+     * @return array|null
      */
     private function extractValuesFromRefHeader(string $header): ?array
     {

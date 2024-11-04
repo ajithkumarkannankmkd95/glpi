@@ -464,7 +464,6 @@ TWIG, $twig_params);
 
             default:
                 throw new \RuntimeException(sprintf('Unexpected origin `%s`.', $origin));
-                break;
         }
 
         if (isset($this->fields[$field_name])) {
@@ -515,8 +514,8 @@ TWIG, $twig_params);
         }
 
         if (!$selectOptions['multiple']) {
-            echo "\n<script type=\"text/javascript\">
-        var device_mac_addresses = [];\n";
+            echo "<script type=\"text/javascript\">
+        var device_mac_addresses = [];";
             foreach ($macAddresses as $port_id => $macAddress) {
                 echo "  device_mac_addresses[$port_id] = '$macAddress'\n";
             }
@@ -525,11 +524,11 @@ TWIG, $twig_params);
       if ((field != undefined) && (device_mac_addresses[devID] != undefined))
          field.value = device_mac_addresses[devID];
    }
-</script>\n";
+</script>";
         }
 
         Dropdown::showFromArray($field_name, $possible_ports, $selectOptions);
-        echo "</td>\n";
+        echo "</td>";
     }
 
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
@@ -598,7 +597,7 @@ TWIG, $twig_params);
             if ($device2->can($device2->fields["id"], READ)) {
                 echo $oppositePort->getLink();
                 if ($device1->fields["entities_id"] !== $device2->fields["entities_id"]) {
-                     echo "<br>(" . htmlspecialchars(Dropdown::getDropdownName(
+                     echo "<br>(" . htmlescape(Dropdown::getDropdownName(
                          "glpi_entities",
                          $device2->getEntityID()
                      )) . ")";
@@ -627,7 +626,7 @@ TWIG, $twig_params);
                 }
                 printf(
                     __s('%1$s on %2$s'),
-                    "<span class='b'>" . htmlspecialchars($netname) . "</span>",
+                    "<span class='b'>" . htmlescape($netname) . "</span>",
                     "<span class='b'>" . $device2->getName() . "</span>"
                 );
                 echo "<br>(" . Dropdown::getDropdownName(
@@ -647,7 +646,7 @@ TWIG, $twig_params);
                             ]
                         );
                     } else {
-                        echo "<a href=\"" . htmlspecialchars($netport->getFormURLWithID($ID)) . "\">" . _sx('button', 'Connect') . "</a>";
+                        echo "<a href=\"" . htmlescape($netport->getFormURLWithID($ID)) . "\">" . _sx('button', 'Connect') . "</a>";
                     }
                 } else {
                     echo "&nbsp;";
@@ -717,7 +716,7 @@ TWIG, $twig_params);
             $params
         );
 
-        echo "<span id='show_" . $p['name'] . "$rand'>&nbsp;</span>\n";
+        echo "<span id='show_" . htmlescape($p['name']) . "$rand'>&nbsp;</span>";
 
         return $rand;
     }

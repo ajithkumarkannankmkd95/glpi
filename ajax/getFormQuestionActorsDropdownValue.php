@@ -33,6 +33,7 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Exception\Http\AccessDeniedHttpException;
 use Glpi\Form\Dropdown\FormActorsDropdown;
 use Glpi\Form\Question;
 use Glpi\Form\QuestionType\QuestionTypeAssignee;
@@ -40,8 +41,6 @@ use Glpi\Form\QuestionType\QuestionTypeObserver;
 use Glpi\Form\QuestionType\QuestionTypeRequester;
 
 include(__DIR__ . '/getAbstractRightDropdownValue.php');
-
-Session::checkLoginUser();
 
 if (Session::getCurrentInterface() !== 'central') {
     $questions = (new Question())->find([
@@ -54,8 +53,7 @@ if (Session::getCurrentInterface() !== 'central') {
 
     // Check if the user can view at least one question
     if (array_reduce($questions, fn($acc, $question) => $acc || $question->canViewItem(), false) === false) {
-        http_response_code(403);
-        exit();
+        throw new AccessDeniedHttpException();
     }
 }
 

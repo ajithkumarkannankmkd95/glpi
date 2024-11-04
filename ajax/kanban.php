@@ -34,20 +34,20 @@
  */
 
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\Exception\Http\AccessDeniedHttpException;
+use Glpi\Exception\Http\BadRequestHttpException;
+use Glpi\Exception\Http\HttpException;
 use Glpi\Features\Kanban;
 use Glpi\Features\Teamwork;
-use Glpi\Http\Response;
 
-/** @var $this \Glpi\Controller\LegacyFileLoadController */
+/** @var \Glpi\Controller\LegacyFileLoadController $this */
 $this->setAjax();
 
 header("Content-Type: text/html; charset=UTF-8");
 Html::header_nocache();
 
-Session::checkLoginUser();
-
 if (!isset($_REQUEST['action'])) {
-    Response::sendError(400, "Missing action parameter", Response::CONTENT_TYPE_TEXT_HTML);
+    throw new BadRequestHttpException("Missing action parameter");
 }
 $action = $_REQUEST['action'];
 
@@ -61,7 +61,7 @@ if (isset($_REQUEST['itemtype'])) {
     if (!in_array($_REQUEST['action'], $nonkanban_actions) && !Toolbox::hasTrait($_REQUEST['itemtype'], Kanban::class)) {
        // Bad request
        // For all actions, except those in $nonkanban_actions, we expect to be manipulating the Kanban itself.
-        Response::sendError(400, "Invalid itemtype parameter", Response::CONTENT_TYPE_TEXT_HTML);
+        throw new BadRequestHttpException("Invalid itemtype parameter");
     }
     /** @var CommonDBTM $item */
     $itemtype = $_REQUEST['itemtype'];
@@ -73,15 +73,13 @@ if ($item !== null) {
     if (in_array($action, ['refresh', 'get_switcher_dropdown', 'get_column', 'load_item_panel'])) {
         if (!$item->canView()) {
            // Missing rights
-            http_response_code(403);
-            return;
+            throw new AccessDeniedHttpException();
         }
     }
     if (in_array($action, ['update', 'load_item_panel', 'delete_teammember'])) {
         if (!$item->can($_REQUEST['items_id'], UPDATE)) {
             // Missing rights
-            http_response_code(403);
-            return;
+            throw new AccessDeniedHttpException();
         }
     }
     if (in_array($action, ['load_teammember_form', 'add_teammember'])) {
@@ -89,31 +87,27 @@ if ($item !== null) {
         $can_assign = method_exists($item, 'canAssign') ? $item->canAssign() : $item->can($_REQUEST['items_id'], UPDATE);
         if (!$can_assign) {
            // Missing rights
-            http_response_code(403);
-            return;
+            throw new AccessDeniedHttpException();
         }
     }
     if (in_array($action, ['bulk_add_item', 'add_item'])) {
         if (!$item->canCreate()) {
            // Missing rights
-            http_response_code(403);
-            return;
+            throw new AccessDeniedHttpException();
         }
     }
     if (in_array($action, ['delete_item'])) {
         $maybe_deleted = $item->maybeDeleted();
         if (($maybe_deleted && !$item::canDelete()) && (!$maybe_deleted && $item::canPurge())) {
            // Missing rights
-            http_response_code(403);
-            return;
+            throw new AccessDeniedHttpException();
         }
     }
     if ($action === 'restore_item') {
         $maybe_deleted = $item->maybeDeleted();
         if (($maybe_deleted && !$item::canDelete())) {
             // Missing rights
-            http_response_code(403);
-            return;
+            throw new AccessDeniedHttpException();
         }
     }
 }
@@ -122,7 +116,7 @@ if ($item !== null) {
 $checkParams = static function ($required) {
     foreach ($required as $param) {
         if (!isset($_REQUEST[$param])) {
-            Response::sendError(400, "Missing $param parameter");
+            throw new BadRequestHttpException("Missing $param parameter");
         }
     }
 };
@@ -140,29 +134,25 @@ if (($_POST['action'] ?? null) === 'update') {
 
     $item = getItemForItemtype($itemtype);
     if (!$item) {
-        http_response_code(400);
-        return;
+        throw new BadRequestHttpException();
     }
 
     $inputs = $_POST['inputs'];
 
     if (!$item->can(-1, CREATE, $inputs)) {
-        http_response_code(403);
-        return;
+        throw new AccessDeniedHttpException();
     }
 
     $result = $item->add($inputs);
     if (!$result) {
-        http_response_code(400);
-        return;
+        throw new BadRequestHttpException();
     }
 } else if (($_POST['action'] ?? null) === 'bulk_add_item') {
     $checkParams(['inputs']);
 
     $item = getItemForItemtype($itemtype);
     if (!$item) {
-        http_response_code(400);
-        return;
+        throw new BadRequestHttpException();
     }
 
     $inputs = $_POST['inputs'];
@@ -182,9 +172,11 @@ if (($_POST['action'] ?? null) === 'update') {
     }
 } else if (($_POST['action'] ?? null) === 'move_item') {
     $checkParams(['card', 'column', 'position', 'kanban']);
-    /** @var Kanban|CommonDBTM $kanban */
     $kanban = getItemForItemtype($_POST['kanban']['itemtype']);
-    $can_move = $kanban->canOrderKanbanCard($_POST['kanban']['items_id']);
+    $can_move = false;
+    if (method_exists($kanban, 'canOrderKanbanCard')) {
+        $can_move = $kanban->canOrderKanbanCard($_POST['kanban']['items_id']);
+    }
     if ($can_move) {
         Item_Kanban::moveCard(
             $_POST['kanban']['itemtype'],
@@ -238,8 +230,7 @@ if (($_POST['action'] ?? null) === 'update') {
     $column_itemtype = getItemtypeForForeignKeyField($column_field);
     if (!$column_itemtype::canCreate() || !$column_itemtype::canView()) {
        // Missing rights
-        http_response_code(403);
-        return;
+        throw new AccessDeniedHttpException();
     }
     $params = $_POST['params'] ?? [];
     $column_item = new $column_itemtype();
@@ -251,7 +242,6 @@ if (($_POST['action'] ?? null) === 'update') {
         // Do nothing with the state unless it isn't saved yet. Could be that no columns are shown or an error occured.
         // If the state is supposed to be cleared, it should come through as a clear_column_state request.
         if (Item_Kanban::hasStateForItem($_POST['itemtype'], $_POST['items_id'])) {
-            http_response_code(304);
             return;
         }
         Item_Kanban::saveStateForItem($_POST['itemtype'], $_POST['items_id'], []);
@@ -270,7 +260,10 @@ if (($_POST['action'] ?? null) === 'update') {
 } else if ($_REQUEST['action'] === 'clear_column_state') {
     $checkParams(['items_id']);
     $result = Item_Kanban::clearStateForItem($_REQUEST['itemtype'], $_REQUEST['items_id']);
-    http_response_code($result ? 200 : 500);
+    if (!$result) {
+        throw new HttpException(500);
+    }
+
     return;
 } else if ($_REQUEST['action'] === 'list_columns') {
     $checkParams(['column_field']);
@@ -295,8 +288,7 @@ if (($_POST['action'] ?? null) === 'update') {
             'purged' => $item->getFromDB($_POST['items_id']) === false,
         ]);
     } else {
-        http_response_code(403);
-        return;
+        throw new AccessDeniedHttpException();
     }
 } else if (($_POST['action'] ?? null) === 'restore_item') {
     $checkParams(['items_id']);
@@ -306,8 +298,7 @@ if (($_POST['action'] ?? null) === 'update') {
     if (($maybe_deleted && $item->canDeleteItem())) {
         $item->restore(['id' => $_POST['items_id']]);
     } else {
-        http_response_code(403);
-        return;
+        throw new AccessDeniedHttpException();
     }
 } else if (($_POST['action'] ?? null) === 'add_teammember') {
     $checkParams(['itemtype_teammember', 'items_id_teammember']);
@@ -327,17 +318,14 @@ if (($_POST['action'] ?? null) === 'update') {
             'team' => Toolbox::hasTrait($item, Teamwork::class) ? $item->getTeam() : []
         ]);
     } else {
-        http_response_code(400);
-        return;
+        throw new BadRequestHttpException();
     }
 } else if (($_REQUEST['action'] ?? null) === 'load_teammember_form') {
     if (isset($itemtype, $item) && Toolbox::hasTrait($_REQUEST['itemtype'], Teamwork::class)) {
         echo $item::getTeamMemberForm($item, $itemtype);
     } else {
-        http_response_code(400);
-        return;
+        throw new BadRequestHttpException();
     }
 } else {
-    http_response_code(400);
-    return;
+    throw new BadRequestHttpException();
 }

@@ -168,7 +168,7 @@ class CartridgeItem extends CommonDBTM
      *
      * @return boolean : true for success
      **/
-    public function addCompatibleType($cartridgeitems_id, $printermodels_id)
+    public static function addCompatibleType($cartridgeitems_id, $printermodels_id)
     {
         /** @var \DBmysql $DB */
         global $DB;
@@ -476,7 +476,7 @@ class CartridgeItem extends CommonDBTM
                              $task->log(sprintf(__('%1$s: %2$s') . "\n", $entityname, $message));
                              $task->addVolume(1);
                         } else {
-                             Session::addMessageAfterRedirect(htmlspecialchars(sprintf(
+                             Session::addMessageAfterRedirect(htmlescape(sprintf(
                                  __('%1$s: %2$s'),
                                  $entityname,
                                  $message
@@ -501,7 +501,7 @@ class CartridgeItem extends CommonDBTM
                             $task->log($msg);
                         } else {
                            //TRANS: %s is the entity
-                            Session::addMessageAfterRedirect(htmlspecialchars($msg), false, ERROR);
+                            Session::addMessageAfterRedirect(htmlescape($msg), false, ERROR);
                         }
                     }
                 }

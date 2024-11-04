@@ -33,10 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
-/** @var $this \Glpi\Controller\LegacyFileLoadController */
+/** @var \Glpi\Controller\LegacyFileLoadController $this */
 $this->setAjax();
-
-Session::checkLoginUser();
 
 switch ($_REQUEST['action']) {
     case "getActors":

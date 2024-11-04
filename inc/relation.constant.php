@@ -102,6 +102,7 @@ $RELATION = [
         '_glpi_assets_assets' => 'assets_assetdefinitions_id',
         '_glpi_assets_assetmodels' => 'assets_assetdefinitions_id',
         '_glpi_assets_assettypes' => 'assets_assetdefinitions_id',
+        '_glpi_assets_customfielddefinitions' => 'assets_assetdefinitions_id',
     ],
 
     'glpi_assets_assetmodels' => [
@@ -137,6 +138,7 @@ $RELATION = [
         'glpi_printers'          => 'autoupdatesystems_id',
         'glpi_refusedequipments' => 'autoupdatesystems_id',
         'glpi_unmanageds'        => 'autoupdatesystems_id',
+        'glpi_assets_assets'     => 'autoupdatesystems_id',
     ],
 
     'glpi_budgets' => [
@@ -505,6 +507,14 @@ $RELATION = [
         'glpi_domainrecords'  => 'domainrecordtypes_id'
     ],
 
+    'glpi_dropdowns_dropdowndefinitions' => [
+        '_glpi_dropdowns_dropdowns' => 'dropdowns_dropdowndefinitions_id',
+    ],
+
+    'glpi_dropdowns_dropdowns' => [
+        'glpi_dropdowns_dropdowns' => 'dropdowns_dropdowns_id',
+    ],
+
     'glpi_enclosuremodels' => [
         'glpi_enclosures' => 'enclosuremodels_id',
     ],
@@ -535,6 +545,7 @@ $RELATION = [
         'glpi_clusters'                    => 'entities_id',
         'glpi_clustertypes'                => 'entities_id',
         'glpi_computers'                   => 'entities_id',
+        'glpi_dropdowns_dropdowns'         => 'entities_id',
         '_glpi_items_softwareversions'     => 'entities_id',
         '_glpi_itemvirtualmachines'        => 'entities_id',
         'glpi_consumableitems'             => 'entities_id',
@@ -1742,7 +1753,7 @@ $polymorphic_types_mapping = [
     Socket::class                  => $CFG_GLPI['socket_types'],
     Item_Plug::class               => $CFG_GLPI['plug_types'],
 ];
-foreach ($CFG_GLPI['itemdevices'] as $itemdevice_itemtype) {
+foreach (Item_Devices::getDeviceTypes() as $itemdevice_itemtype) {
     $source_itemtypes = $itemdevice_itemtype::itemAffinity();
     if (in_array('*', $source_itemtypes)) {
         $source_itemtypes = $CFG_GLPI['itemdevices_types'];
@@ -1789,6 +1800,7 @@ foreach ($polymorphic_types_mapping as $target_itemtype => $source_itemtypes) {
             // related item will be preserved with its foreign key defined to 0, making it an unwanted orphaned item.
             $target_table_key_prefix = '_';
         }
+        /** @var class-string<CommonDBTM> $target_itemtype */
         $target_table_key = $target_table_key_prefix . $target_itemtype::getTable();
         $source_table     = $source_itemtype::getTable();
 

@@ -34,6 +34,8 @@
  */
 
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\Exception\Http\AccessDeniedHttpException;
+use Glpi\Exception\Http\NotFoundHttpException;
 use Glpi\Plugin\Hooks;
 use Glpi\Search\FilterableInterface;
 
@@ -46,13 +48,6 @@ class CommonGLPI implements CommonGLPIInterface
      * Show the title of the item in the navigation header ?
      */
     protected static $showTitleInNavigationHeader = false;
-
-   /**
-    * GLPI Item type cache : set dynamically calling getType
-    *
-    * @var integer
-    */
-    protected $type                 = -1;
 
    /**
     * Display list on Navigation Header
@@ -154,7 +149,7 @@ class CommonGLPI implements CommonGLPIInterface
      *
      * @return boolean
      **/
-    public function can($ID, int $right, array &$input = null): bool
+    public function can($ID, int $right, ?array &$input = null): bool
     {
         return match ($right) {
             READ => static::canView(),
@@ -586,11 +581,29 @@ class CommonGLPI implements CommonGLPIInterface
      * @param CommonGLPI $item         Item on which the tab need to be displayed
      * @param integer    $withtemplate is a template object ? (default 0)
      *
-     *  @return string tab name
+     *  @return string|string[] The tab name(s).
+     *  Must be:
+     *  - A string if there is a single tab
+     *  - An array of string if there are multiple tabs.
+     *  - An an empty string if there is no tabs.
      **/
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
         return '';
+    }
+
+    public static function getSectorizedDetails(): array
+    {
+        return [];
+    }
+
+    public static function getHeaderParameters(): array
+    {
+        return [
+            static::getTypeName(\Session::getPluralNumber()),
+            '',
+            ...static::getSectorizedDetails(),
+        ];
     }
 
     /**
@@ -630,7 +643,7 @@ class CommonGLPI implements CommonGLPIInterface
                 if (count($ong)) {
                     foreach ($ong as $key => $val) {
                         if ($key != 'empty') {
-                            echo "<div class='alltab'>$val</div>";
+                            echo "<div class='alltab'>" . $val . "</div>";
                             self::displayStandardTab($item, $key, $withtemplate, $options);
                         }
                     }
@@ -718,21 +731,22 @@ class CommonGLPI implements CommonGLPIInterface
      **/
     public static function createTabEntry($text, $nb = 0, ?string $form_itemtype = null, string $icon = '')
     {
-        if (empty($icon)) {
+        if ($icon === '') {
             $icon = static::getTabIconClass($form_itemtype);
         }
         if (str_contains($icon, 'fa-empty-icon')) {
             $icon = '';
         }
-        $icon = !empty($icon) ? "<i class='$icon me-2'></i>" : '';
-        if (!empty($icon)) {
-            $text = '<span>' . $icon . $text . '</span>';
-        }
-        if ($nb) {
-           //TRANS: %1$s is the name of the tab, $2$d is number of items in the tab between ()
-            $text = sprintf(__('%1$s %2$s'), $text, "<span class='badge glpi-badge'>$nb</span>");
-        }
-        return $text;
+
+        $icon_html = $icon !== '' ? sprintf('<i class="%s me-2"></i>', htmlescape($icon)) : '';
+        $counter_html = $nb !== 0 ? sprintf(' <span class="badge glpi-badge">%d</span>', $nb) : '';
+
+        return sprintf(
+            '<span class="d-flex align-items-center">%s%s%s</span>',
+            $icon_html,
+            htmlescape($text),
+            $counter_html
+        );
     }
 
     /**
@@ -1011,8 +1025,6 @@ class CommonGLPI implements CommonGLPIInterface
                 $glpilisturl = $this->getSearchURL();
             }
 
-           // echo "<div id='menu_navigate'>";
-
             $next = $prev = $first = $last = -1;
             $current = false;
             if (is_array($glpilistitems)) {
@@ -1045,9 +1057,9 @@ class CommonGLPI implements CommonGLPIInterface
             echo "<div class='left-icons'>";
 
             if (!$glpilisttitle) {
-                $glpilisttitle = __s('List');
+                $glpilisttitle = __('List');
             }
-            $list = "<a href='$glpilisturl' title=\"$glpilisttitle\"
+            $list = "<a href='$glpilisturl' title=\"" . htmlescape($glpilisttitle) . "\"
                   class='btn btn-sm btn-icon btn-ghost-secondary me-2'
                   data-bs-toggle='tooltip' data-bs-placement='bottom'>
                   <i class='ti ti-list-search fa-lg'></i>
@@ -1099,9 +1111,9 @@ class CommonGLPI implements CommonGLPIInterface
                 if (method_exists($this, 'getStatusIcon') && $this->isField('status')) {
                     echo "<span class='me-1'>" . $this->getStatusIcon($this->fields['status']) . '</span>';
                 }
-                echo $this->getNameID([
+                echo htmlescape($this->getNameID([
                     'forceid' => $this instanceof CommonITILObject
-                ]);
+                ]));
                 if ($this->isField('is_deleted') && $this->fields['is_deleted']) {
                     $title = $this->isField('date_mod')
                                 ? sprintf(__s('Item has been deleted on %s'), Html::convDateTime($this->fields['date_mod']))
@@ -1197,7 +1209,7 @@ class CommonGLPI implements CommonGLPIInterface
                 && !$this->isNewID($options['id'])
             ) {
                 if (!$this->getFromDB($options['id'])) {
-                    Html::displayNotFoundError();
+                    throw new NotFoundHttpException();
                 }
             }
             // in case of lefttab layout, we couldn't see "right error" message
@@ -1207,10 +1219,7 @@ class CommonGLPI implements CommonGLPIInterface
                 && $_GET["id"]
                 && !$this->can($_GET["id"], READ)
             ) {
-                // This triggers from a profile switch.
-                // If we don't have right, redirect instead to central page
-                Toolbox::handleProfileChangeRedirect();
-                Html::displayRightError();
+                throw new AccessDeniedHttpException();
             }
         }
 
@@ -1280,11 +1289,6 @@ class CommonGLPI implements CommonGLPIInterface
         }
 
         $ret = '';
-        $title = __s('FAQ');
-        if (Session::getCurrentInterface() == 'central') {
-            $title = __s('Knowledge base');
-        }
-
         $iterator = $DB->request([
             'SELECT' => [KnowbaseItem::getTable() . '.*'],
             'FROM'   => KnowbaseItem::getTable(),
