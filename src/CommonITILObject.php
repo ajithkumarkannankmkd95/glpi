@@ -74,9 +74,6 @@ abstract class CommonITILObject extends CommonDBTM
     const HELPDESK_MY_HARDWARE  = 0;
     const HELPDESK_ALL_HARDWARE = 1;
 
-   /// Use user entity to select entity of the object
-    protected $userentity_oncreate = false;
-
     protected static $showTitleInNavigationHeader = true;
 
     const MATRIX_FIELD         = '';
@@ -172,7 +169,7 @@ abstract class CommonITILObject extends CommonDBTM
     {
         // TODO 11.0 (breaking change): method should be protected instead of public
 
-        // Might not be 100% needed to clear cache here but lets be safe
+        // Might not be 100% needed to clear cache here but let's be safe
         // This way, any direct call to loadActors is assured to return accurate data
         $this->clearLazyLoadedActors();
 
@@ -247,13 +244,6 @@ abstract class CommonITILObject extends CommonDBTM
                 break;
 
             default:
-                if (version_compare(PHP_VERSION, '8.2.0', '<')) {
-                    // Trigger same deprecation notice as the one triggered by PHP 8.2+
-                    trigger_error(
-                        sprintf('Creation of dynamic property %s::$%s is deprecated', get_called_class(), $property_name),
-                        E_USER_DEPRECATED
-                    );
-                }
                 $this->$property_name = $value;
                 break;
         }
@@ -1143,25 +1133,6 @@ abstract class CommonITILObject extends CommonDBTM
         return count($validation_requests) > 0;
     }
 
-    /**
-     * Check if the given users is a validator
-     * @param int $users_id
-     * @return bool
-     *
-     * @deprecated 11.0.0
-     */
-    public function isValidator($users_id): bool
-    {
-        Toolbox::deprecated('"CommonITILObject::isValidator()" is deprecated. Use "CommonITILObject::isUserValidationRequested()" instead.');
-
-        if (!$users_id) {
-           // Invalid parameter
-            return false;
-        }
-
-        return $this->isUserValidationRequested($users_id, true);
-    }
-
 
     /**
      * Does current user have right to solve the current item?
@@ -1477,7 +1448,7 @@ abstract class CommonITILObject extends CommonDBTM
      *
      * @param integer $type type to search (see constants)
      *
-     * @return boolean
+     * @return int
      **/
     public function getDefaultActor($type)
     {
@@ -1508,7 +1479,7 @@ abstract class CommonITILObject extends CommonDBTM
      *
      * @param integer $type type to search (see constants)
      *
-     * @return boolean
+     * @return string
      **/
     public function getDefaultActorRightSearch($type)
     {
@@ -3028,7 +2999,7 @@ abstract class CommonITILObject extends CommonDBTM
     }
 
     /**
-     * Handle input deprecations by transfering old supported input keys to new input keys.
+     * Handle input deprecations by transferring old supported input keys to new input keys.
      *
      * @param array $input
      *
@@ -5363,192 +5334,6 @@ abstract class CommonITILObject extends CommonDBTM
 
 
     /**
-     * show user add div on creation
-     *
-     * @param $type      integer  actor type
-     * @param $options   array    options for default values ($options of showForm)
-     *
-     * @return integer Random part of inputs ids
-     **/
-    public function showActorAddFormOnCreate($type, array $options)
-    {
-        /** @var array $CFG_GLPI */
-        global $CFG_GLPI;
-
-        $typename = static::getActorFieldNameType($type);
-
-        $itemtype = $this->getType();
-
-       // For ticket templates : mandatories
-        $key = $this->getTemplateFormFieldName();
-        if (isset($options[$key])) {
-            $tt = $options[$key];
-            if (is_numeric($options[$key])) {
-                $tt_id = $options[$key];
-                $tt_classname = self::getTemplateClass();
-                $tt = new $tt_classname();
-                $tt->getFromDB($tt_id);
-            }
-            echo $tt->getMandatoryMark("_users_id_" . $typename);
-        }
-
-        $right = $options["_right"] ?? $this->getDefaultActorRightSearch($type);
-
-        if ($options["_users_id_" . $typename] == 0 && !isset($_REQUEST["_users_id_$typename"]) && !isset($this->input["_users_id_$typename"])) {
-            $options["_users_id_" . $typename] = $this->getDefaultActor($type);
-        }
-        $rand = $options['rand'] ?? mt_rand();
-        $actor_name = '_users_id_' . $typename;
-        if ($type == CommonITILActor::OBSERVER) {
-            $actor_name = '_users_id_' . $typename . '[]';
-        }
-        $params = [
-            'name'   => $actor_name,
-            'value'  => $options["_users_id_" . $typename],
-            'right'  => $right,
-            'rand'   => $rand,
-            'width'  => "95%",
-            'entity' => Session::getMatchingActiveEntities($options['entities_id'] ?? $options['entity_restrict']),
-        ];
-
-       //only for active ldap and corresponding right
-        $ldap_methods = getAllDataFromTable('glpi_authldaps', ['is_active' => 1]);
-        if (
-            count($ldap_methods)
-            && Session::haveRight('user', User::IMPORTEXTAUTHUSERS)
-        ) {
-            $params['ldap_import'] = true;
-        }
-
-        if (
-            $this->userentity_oncreate
-            && ($type == CommonITILActor::REQUESTER)
-        ) {
-            $params['on_change'] = 'this.form.submit()';
-            unset($params['entity']);
-        }
-
-        $params['_user_index'] = 0;
-        if (isset($options['_user_index'])) {
-            $params['_user_index'] = $options['_user_index'];
-        }
-
-        $paramscomment = [];
-        if ($CFG_GLPI['notifications_mailing']) {
-            $paramscomment = [
-                'value'            => '__VALUE__',
-                'field'            => "_users_id_" . $typename . "_notif",
-                '_user_index'      => $params['_user_index'],
-                'allow_email'      => $type == CommonITILActor::REQUESTER
-                               || $type == CommonITILActor::OBSERVER,
-                'use_notification' => $options["_users_id_" . $typename . "_notif"]['use_notification']
-            ];
-            if (isset($options["_users_id_" . $typename . "_notif"]['alternative_email'])) {
-                $paramscomment['alternative_email']
-                = $options["_users_id_" . $typename . "_notif"]['alternative_email'];
-            }
-            $params['toupdate'] = [
-                'value_fieldname' => 'value',
-                'to_update'       => "notif_" . $typename . "_$rand",
-                'url'             => $CFG_GLPI["root_doc"] . "/ajax/uemailUpdate.php",
-                'moreparams'      => $paramscomment
-            ];
-        }
-
-        if (
-            ($itemtype == 'Ticket')
-            && ($type == CommonITILActor::ASSIGN)
-        ) {
-            $toupdate = [];
-            if (isset($params['toupdate']) && is_array($params['toupdate'])) {
-                $toupdate[] = $params['toupdate'];
-            }
-            $toupdate[] = [
-                'value_fieldname' => 'value',
-                'to_update'       => "countassign_$rand",
-                'url'             => $CFG_GLPI["root_doc"] . "/ajax/actorinformation.php",
-                'moreparams'      => ['users_id_assign' => '__VALUE__']
-            ];
-            $params['toupdate'] = $toupdate;
-        }
-
-       // List all users in the active entities
-        echo "<div class='text-nowrap'>";
-        User::dropdown($params);
-
-        if ($itemtype == 'Ticket') {
-           // display opened tickets for user
-            if (
-                ($type == CommonITILActor::REQUESTER)
-                && ($options["_users_id_" . $typename] > 0)
-                && (Session::getCurrentInterface() != "helpdesk")
-            ) {
-                $options2 = [
-                    'criteria' => [
-                        [
-                            'field'      => 4, // users_id
-                            'searchtype' => 'equals',
-                            'value'      => $options["_users_id_" . $typename],
-                            'link'       => 'AND',
-                        ],
-                        [
-                            'field'      => 12, // status
-                            'searchtype' => 'equals',
-                            'value'      => 'notold',
-                            'link'       => 'AND',
-                        ],
-                    ],
-                    'reset'    => 'reset',
-                ];
-
-                $url = $this->getSearchURL() . "?" . Toolbox::append_params($options2, '&amp;');
-
-                echo "<a href='$url' title=\"" . __s('Processing') . "\" class='badge bg-secondary ms-1'>";
-                echo $this->countActiveObjectsForUser($options["_users_id_" . $typename]);
-                echo "</a>";
-            }
-        }
-        echo "</div>";
-
-        if ($itemtype == 'Ticket') {
-           // Display active tickets for a tech
-           // Need to update information on dropdown changes
-            if ($type == CommonITILActor::ASSIGN) {
-                echo "<span id='countassign_$rand'>";
-                echo "</span>";
-
-                echo "<script type='text/javascript'>";
-                echo "$(function() {";
-                Ajax::updateItemJsCode(
-                    "countassign_$rand",
-                    $CFG_GLPI["root_doc"] . "/ajax/actorinformation.php",
-                    ['users_id_assign' => '__VALUE__'],
-                    "dropdown__users_id_" . htmlescape($typename . $rand)
-                );
-                echo "});</script>";
-            }
-        }
-
-        if ($CFG_GLPI['notifications_mailing']) {
-            echo "<div id='notif_" . htmlescape($typename) . "_$rand' class='mt-2'>";
-            echo "</div>";
-
-            echo "<script type='text/javascript'>";
-            echo "$(function() {";
-            Ajax::updateItemJsCode(
-                "notif_" . $typename . "_$rand",
-                $CFG_GLPI["root_doc"] . "/ajax/uemailUpdate.php",
-                $paramscomment,
-                "dropdown_" . $actor_name . $rand
-            );
-            echo "});</script>";
-        }
-
-        return $rand;
-    }
-
-
-    /**
      * @param $actiontime
      **/
     public static function getActionTime($actiontime)
@@ -6723,7 +6508,7 @@ abstract class CommonITILObject extends CommonDBTM
     /**
      * Display a line for an object
      *
-     * @since 0.85 (befor in each object with differents parameters)
+     * @since 0.85 (before in each object with different parameters)
      *
      * @param $id                 Integer  ID of the object
      * @param $options            array of options
@@ -9783,7 +9568,7 @@ abstract class CommonITILObject extends CommonDBTM
     }
 
     /**
-     * Parameter class to be use for this item (user templates)
+     * Parameter class to be used for this item (user templates)
      * @return string class name
      */
     abstract public static function getContentTemplatesParametersClass(): string;

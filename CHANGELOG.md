@@ -33,6 +33,8 @@ The present file will list all changes made to the project; according to the
 - `ODS` and `XLS` export of search results.
 - Support for the well-known `change-password" URI which can be used by some password managers to automatically (or assist with) changing a user's password.
 - CLI commands for creating local GLPI users, enabling/disabling/deleting users, resetting local GLPI user passwords and granting profile assignments.
+- Cloning templates (such as computer templates)
+- Creating a template from an existing item (such as a computer). This action is only available from the Actions menu within the item form (bulk action not allowed).
 
 ### Changed
 - ITIL Objects can now be linked to any other ITIL Objects similar to the previous Ticket/Ticket links.
@@ -74,7 +76,6 @@ The present file will list all changes made to the project; according to the
 
 ### Deprecated
 - Survey URL tags `TICKETCATEGORY_ID` and `TICKETCATEGORY_NAME` are deprecated and replaced by `ITILCATEGORY_ID` and `ITILCATEGORY_NAME` respectively.
-- `Search::joinDropdownTranslations()`
 
 ### Removed
 - XML-RPC API.
@@ -96,6 +97,7 @@ The present file will list all changes made to the project; according to the
 - `Glpi\DBAL\QueryFunction` class with multiple static methods for building SQL query function strings in an abstract way.
 - `fetchSessionMessages()` global JS function to display new session messages as toast notifications without requiring a page reload.
 - `is_exclusion` column added to `glpi_notificationtargets` table.
+- `CommonDBTM::getForbiddenMultipleMassiveActions()` method to allow specifying which actions should only be shown from the item form.
 
 #### Changes
 - Many methods have their signature changed to specify both their return type and the types of their parameters.
@@ -119,10 +121,10 @@ The present file will list all changes made to the project; according to the
 - All types of rules are now sortable and ordered by ranking.
 - Plugins console commands must now use the normalized prefix `plugins:XXX` where `XXX` is the plugin key.
 - GLPI web root is now the `/public` directory and all web request to PHP scripts are proxified by `public/index.php` script.
-- Usage of `DBmysql::query()`, `DBmysql::queryOrDie()` method are prohibited to ensure that legacy unsafe DB are no more executed.
+- Usage of `DBmysql::query()` and `DBmysql::queryOrDie()` method are prohibited to ensure that legacy unsafe DB are no more executed.
   Building and executing raw queries using `DBmysql::request()`, `DBmysqlIterator::buildQuery()` and `DBmysqlIterator::execute()` methods is also prohibited.
   To execute DB queries, either `DBmysql::request()` can be used to craft query using the GLPI query builder,
-  either `DBmysql::doQuery()`/`DBmysql::doQueryOrDie()` can be used for safe queries to execute DB query using a self-crafted a SQL string.
+  or `DBmysql::doQuery()` can be used for safe queries to execute DB query using a self-crafted a SQL string.
 - `js/fuzzysearch.js` replaced with `FuzzySearch/Modal` Vue component.
 - `Html::fuzzySearch()` replaced with `Html::getMenuFuzzySearchList()` function.
 - `NotificationEvent::raiseEvent()` signature cahnged. A new `$trigger` parameter has been added at 4th position, and `$label` is now the 5th parameter.
@@ -172,6 +174,7 @@ The present file will list all changes made to the project; according to the
   by a unique boolean `$tech` parameter that is used to compute the `$types` and `$field` values automatically.
 - `CartridgeItem::addCompatibleType()` method is now static.
 - `Rule::initRule()` has been made final and non static and its signature changed.
+- `Clonable::clone()` and `Clonable::cloneMultiple()` methods now accept a `$clone_as_template` parameter to allow creating templates.
 - `Transfer` class is now final.
 - `Transfer::addNotToBeTransfer()` method is now private.
 - `Transfer::addToAlreadyTransfer()` method is now private.
@@ -211,6 +214,9 @@ The present file will list all changes made to the project; according to the
 - `DBConnection::createMainConfig()` signature changed. The `$allow_myisam` parameter has been removed.
 - `DBConnection::createSlaveConnectionFile()` signature changed. The `$allow_myisam` parameter has been removed.
 - `DBmysql::$allow_myisam` property has been removed.
+- `Contract::getExpiredCriteria()` renamed to `Contract::getNotExpiredCriteria()` to match the actual behavior.
+- `Migration::updateRight()` renamed to `Migration::replaceRight()`.
+- `Search::getOptions()` no longer returns a reference.
 
 #### Deprecated
 - Usage of the `/marketplace` path for plugins URLs. All plugins URLs should now start with `/plugins`.
@@ -219,8 +225,6 @@ The present file will list all changes made to the project; according to the
 - `$AJAX_INCLUDE` global variable usage. Use `$this->setAjax()` in legacy `/ajax/` and `/front` scripts or `Html::setAjax()` and `Session::setAjax()`.
 - Usage of `name` and `users_id_validate` parameter in `ajax/dropdownValidator.php`.
 - Usage of `users_id_validate` parameter in `front/commonitilvalidation.form.php`.
-- `ajax/itemTicket.php` script usage.
-- `ajax/knowbase.php` script usage.
 - `front/ticket_ticket.form.php` script usage.
 - Usage of `users_id_validate` input in `CommonITILObject`.
 - Defining "users_id_validate" field without defining "itemtype_target"/"items_id_target" in "CommonITILValidation".
@@ -234,24 +238,17 @@ The present file will list all changes made to the project; according to the
 - Usage of the `$link` parameter in `getUserName()` and `DbUtils::getUserName()`. Use `getUserLink()`, `DbUtils::getUserLink()`, or `User::getInfoCard()` instead.
 - Usage of the `$withcomment` parameter in `getTreeValueCompleteName()`, `DbUtils::getTreeValueCompleteName()` and `Dropdown::getDropdownName()`. Use `Dropdown::getDropdownComments()` instead.
 - `Auth::getErr()`
-- `AuthLDAP::dropdownUserDeletedActions()`
-- `AuthLDAP::getOptions()`
-- `CommonITILObject::isValidator()`
 - `ComputerAntivirus` has been deprecated and replaced by `ItemAntivirus`
 - `ComputerVirtualMachine` has been deprecated and replaced by `ItemVirtualMachine`
-- `Config::validatePassword()`
-- `Contract::getExpiredCriteria()` renamed to `Contract::getNotExpiredCriteria()` to match the actual behavior.
+- `DBmysql::deleteOrDie()`. Use `DBmysql::delete()` instead.
+- `DBmysql::doQueryOrDie()`. Use `DBmysql::doQuery()` instead.
+- `DBmysql::insertOrDie()`. Use `DBmysql::insert()` instead.
 - `DBmysql::truncate()`
 - `DBmysql::truncateOrDie()`
-- `Document::getImage()`
+- `DBmysql::updateOrDie()`. Use `DBmysql::update()` instead.
 - `Glpi\Application\View\Extension\DataHelpersExtension::getVerbatimValue()`
 - `Glpi\Application\View\Extension\PluginExtension::getPluginWebDir()`
 - `Glpi\Dashboard\Filter::getAll()`
-- `Glpi\Event::showList()`
-- `Glpi\Features\DCBreadcrumb::getDcBreadcrumb()`
-- `Glpi\Features\DCBreadcrumb::getDcBreadcrumbSpecificValueToDisplay()`
-- `Glpi\Features\DCBreadcrumb::isEnclosurePart()`
-- `Glpi\Features\DCBreadcrumb::isRackPart()`
 - `Glpi\Http\Response::sendError()`. Throw a `Glpi\Exception\Http\*HttpException` exception instead.
 - `Glpi\Toolbox\Sanitizer::dbEscape()`
 - `Glpi\Toolbox\Sanitizer::dbEscapeRecursive()`
@@ -280,14 +277,9 @@ The present file will list all changes made to the project; according to the
 - `ITILFollowup::ADDMYTICKET` constant. Use `ITILFollowup::ADDMY`.
 - `ITILFollowup::ADDGROUPTICKET` constant. Use `ITILFollowup::ADD_AS_GROUP`.
 - `ITILFollowup::ADDALLTICKET` constant. Use `ITILFollowup::ADDALLITEM`.
-- `Knowbase::getTreeCategoryList()`
-- `Knowbase::showBrowseView()`
-- `Knowbase::showManageView()`
-- `KnowbaseItem::showManageForm()`
-- `Migration::updateRight()`. Use `Migration::replaceRight()` instead.
 - `Pdu_Plug` has been deprecated and replaced by `Item_Plug`
 - `Plugin::getWebDir()`
-- `Search::getOptions()` no longer returns a reference
+- `Search::joinDropdownTranslations()`
 - `Ticket` `link_to_problem` massive action is deprecated. Use `CommonITILObject_CommonITILObject` `add` massive action instead.
 - `Ticket_Ticket` `add` massive action is deprecated. Use `CommonITILObject_CommonITILObject` `add` massive action instead.
 - `Ticket_Ticket::getLinkedTicketsTo()`
@@ -315,6 +307,9 @@ The present file will list all changes made to the project; according to the
 - Handling of encoded/escaped value in `autoName()`.
 - `closeDBConnections`
 - `regenerateTreeCompleteName()`
+- `AuthLDAP::dropdownUserDeletedActions()`
+- `AuthLDAP::dropdownUserRestoredActions()`
+- `AuthLDAP::getLdapDeletedUserActionOptions()`
 - `Cartridge::getNotificationParameters()`
 - `CartridgeItem::showDebug()`
 - `Certificate::showDebug()`
@@ -335,7 +330,10 @@ The present file will list all changes made to the project; according to the
 - `CommonGLPI::showDislayOptions()`
 - `CommonITILActor::showUserNotificationForm()`
 - `CommonITILActor::showSupplierNotificationForm()`
+- `CommonITILObject::$userentity_oncreate` property.
 - `CommonITILObject::getAssignName()`
+- `CommonITILObject::isValidator()`
+- `CommonITILObject::showActorAddFormOnCreate()`
 - `CommonITILValidation::alreadyExists()`
 - `CommonITILValidation::getTicketStatusNumber()`
 - `CommonTreeDropdown::sanitizeSeparatorInCompletename()`
@@ -349,6 +347,7 @@ The present file will list all changes made to the project; according to the
 - `ComputerVirtualMachine::showForComputer()`
 - `Config::getCurrentDBVersion()`
 - `Config::showDebug()`
+- `Config::validatePassword()`
 - `Consumable::showAddForm()`
 - `Consumable::showForConsumableItem()`
 - `ConsumableItem::showDebug()`
@@ -358,18 +357,21 @@ The present file will list all changes made to the project; according to the
 - `Contract::showShort()`
 - `DbUtils::closeDBConnections()`
 - `DbUtils::regenerateTreeCompleteName()`
-- `Document::uploadDocument()`
+- `Document::getImage()`
 - `Document::showUploadedFilesDropdown()`
+- `Document::uploadDocument()`
 - `Document_Item::showSimpleAddForItem()`
 - `DropdownTranslation::canBeTranslated()`. Translations are now always active.
 - `DropdownTranslation::isDropdownTranslationActive()`. Translations are now always active.
 - `Entity::getDefaultContractValues()`
+- `Entity::cleanEntitySelectorCache()`
 - `Entity::title()`
 - `FieldUnicity::showDebug()`
 - `GLPI::getErrorHandler()`
 - `GLPI::getLogLevel()`
 - `Glpi\Api\API::showDebug()`
 - `Glpi\Api\API::returnSanitizedContent()`
+- `Glpi\Application\ErrorHandler::handleSqlError()`
 - `Glpi\Dashboard\Filter::dates()`
 - `Glpi\Dashboard\Filter::dates_mod()`
 - `Glpi\Dashboard\Filter::itilcategory()`
@@ -383,6 +385,11 @@ The present file will list all changes made to the project; according to the
 - `Glpi\Dashboard\Filter::displayList()`
 - `Glpi\Dashboard\Filter::field()`
 - `Glpi\Dashboard\Widget::getCssGradientPalette()`
+- `Glpi\Event::showList()`
+- `Glpi\Features\DCBreadcrumb::getDcBreadcrumb()`
+- `Glpi\Features\DCBreadcrumb::getDcBreadcrumbSpecificValueToDisplay()`
+- `Glpi\Features\DCBreadcrumb::isEnclosurePart()`
+- `Glpi\Features\DCBreadcrumb::isRackPart()`
 - `Glpi\Inventory\Conf::importFile()`
 - `Glpi\Socket::executeAddMulti()`
 - `Glpi\Socket::showNetworkPortForm()`
@@ -392,6 +399,7 @@ The present file will list all changes made to the project; according to the
 - `Glpi\System\Requirement\SafeDocumentRoot` class.
 - `Glpi\System\Status\StatusChecker::getFullStatus()`
 - `Group::title()`
+- `Group_User` `is_userdelegate` field.
 - `Html::autocompletionTextField()`
 - `Html::clean()`
 - `Html::closeArrowMassives()`
@@ -409,10 +417,15 @@ The present file will list all changes made to the project; according to the
 - `IPNetwork::title()`
 - `Item_Problem::showForProblem()`
 - `Item_Ticket::showForTicket()`
+- `ITILTemplate::getSimplifiedInterfaceFields()`
+- `Knowbase::getTreeCategoryList()`
+- `Knowbase::showBrowseView()`
+- `Knowbase::showManageView()`
 - `KnowbaseItem::addToFaq()`
 - `KnowbaseItem::addVisibilityJoins()`
 - `KnowbaseItem::addVisibilityRestrict()`
 - `KnowbaseItem::showBrowseForm()`
+- `KnowbaseItem::showManageForm()`
 - `KnowbaseItem_Comment::displayComments()`
 - `KnowbaseItem_KnowbaseItemCategory::displayTabContentForItem()`
 - `KnowbaseItem_KnowbaseItemCategory::getTabNameForItem()`
@@ -488,10 +501,14 @@ The present file will list all changes made to the project; according to the
 - `SoftwareLicense::getSonsOf()`
 - `SoftwareLicense::showDebug()`
 - `Transfer::$inittype` property.
+- `Ticket::canDelegateeCreateTicket()`
 - `Ticket::showDebug()`
+- `Ticket::showFormHelpdesk()`
+- `Ticket::showFormHelpdeskObserver()`
 - `Ticket_Ticket::checkParentSon()`
 - `Ticket_Ticket::countOpenChildren()`
 - `Ticket_Ticket::manageLinkedTicketsOnSolved()`. Replaced by `CommonITILObject_CommonITILObject::manageLinksOnChange()`.
+- `TicketTemplate::showHelpdeskPreview()`
 - `Toolbox::canUseCas()`
 - `Toolbox::checkValidReferer()`
 - `Toolbox::clean_cross_side_scripting_deep()`
@@ -507,6 +524,7 @@ The present file will list all changes made to the project; according to the
 - `Toolbox::sodiumEncrypt()`
 - `Toolbox::unclean_cross_side_scripting_deep()`
 - `Transfer::manageConnectionComputer()`
+- `User::getDelegateGroupsForUser()`
 - `User::showDebug()`
 - `User::title()`
 - `XML` class.
@@ -526,6 +544,7 @@ The present file will list all changes made to the project; according to the
 - `test_ldap` and `test_ldap_replicate` actions in `front/authldap.form.php`. Use `ajax/ldap.php` instead.
 - `ajax/ticketsatisfaction.php` and `ajax/changesatisfaction.php` scripts. Access `ajax/commonitilsatisfaction.php` directly instead.
 - Usage of the `$cut` parameter in `formatUserName()` and `DbUtils::formatUserName()`.
+- Handling of the `delegate` right in `User::getSqlSearchResult()`.
 
 
 ## [10.0.17] unreleased

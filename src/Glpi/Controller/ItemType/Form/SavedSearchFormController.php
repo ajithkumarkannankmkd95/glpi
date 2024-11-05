@@ -8,7 +8,6 @@
  * http://glpi-project.org
  *
  * @copyright 2015-2024 Teclib' and contributors.
- * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
  * ---------------------------------------------------------------------
@@ -33,6 +32,38 @@
  * ---------------------------------------------------------------------
  */
 
-include(__DIR__ . '/item_ticket.php');
+namespace Glpi\Controller\ItemType\Form;
 
-Toolbox::deprecated('Use ajax/item_ticket.php instead.');
+use Glpi\Controller\GenericFormController;
+use Glpi\Routing\Attribute\ItemtypeFormLegacyRoute;
+use Glpi\Routing\Attribute\ItemtypeFormRoute;
+use Html;
+use SavedSearch;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+
+class SavedSearchFormController extends GenericFormController
+{
+    #[ItemtypeFormRoute(SavedSearch::class)]
+    #[ItemtypeFormLegacyRoute(SavedSearch::class)]
+    public function __invoke(Request $request): Response
+    {
+        $request->attributes->set('class', SavedSearch::class);
+
+        if ($request->query->has('create_notif')) {
+            return $this->createNotif();
+        }
+
+        return parent::__invoke($request);
+    }
+
+    public function createNotif(): RedirectResponse
+    {
+        $savedsearch = new SavedSearch();
+        $savedsearch->check($_GET['id'], UPDATE);
+        $savedsearch->createNotif();
+
+        return new RedirectResponse(Html::getBackUrl());
+    }
+}

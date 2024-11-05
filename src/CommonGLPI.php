@@ -739,7 +739,7 @@ class CommonGLPI implements CommonGLPIInterface
         }
 
         $icon_html = $icon !== '' ? sprintf('<i class="%s me-2"></i>', htmlescape($icon)) : '';
-        $counter_html = $nb !== 0 ? sprintf(' <span class="badge glpi-badge">%d</span>', $nb) : '';
+        $counter_html = $nb !== 0 ? sprintf(' <span class="badge glpi-badge">%d</span>', (int)$nb) : '';
 
         return sprintf(
             '<span class="d-flex align-items-center">%s%s%s</span>',
@@ -755,25 +755,28 @@ class CommonGLPI implements CommonGLPIInterface
      *
      * @return void
      **/
-    public function redirectToList()
+    public function redirectToList(): void
+    {
+        Html::redirect($this->getRedirectToListUrl());
+    }
+
+    public function getRedirectToListUrl(): string
     {
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
-        if (
-            isset($_GET['withtemplate'])
-            && !empty($_GET['withtemplate'])
-        ) {
-            Html::redirect($CFG_GLPI["root_doc"] . "/front/setup.templates.php?add=0&itemtype=" .
-                        $this->getType());
-        } else if (
-            isset($_SESSION['glpilisturl'][$this->getType()])
-                 && !empty($_SESSION['glpilisturl'][$this->getType()])
-        ) {
-            Html::redirect($_SESSION['glpilisturl'][$this->getType()]);
-        } else {
-            Html::redirect($this->getSearchURL());
+        if (!empty($_GET['withtemplate'])) {
+            return $CFG_GLPI["root_doc"] . "/front/setup.templates.php?add=0&itemtype=" . static::getType();
         }
+
+        if (
+            isset($_SESSION['glpilisturl'][static::getType()])
+            && !empty($_SESSION['glpilisturl'][static::getType()])
+        ) {
+            return $_SESSION['glpilisturl'][static::getType()];
+        }
+
+        return static::getSearchURL();
     }
 
     /**
@@ -1224,7 +1227,7 @@ class CommonGLPI implements CommonGLPIInterface
         }
 
        // try to lock object
-       // $options must contains the id of the object, and if locked by manageObjectLock will contains 'locked' => 1
+       // $options must contain the id of the object, and if locked by manageObjectLock will contain 'locked' => 1
         ObjectLock::manageObjectLock(get_class($this), $options);
 
        // manage custom options passed to tabs

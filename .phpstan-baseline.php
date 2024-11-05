@@ -80,12 +80,6 @@ $ignoreErrors[] = [
 	'path' => __DIR__ . '/install/empty_data.php',
 ];
 $ignoreErrors[] = [
-	// identifier: if.alwaysFalse
-	'message' => '#^If condition is always false\\.$#',
-	'count' => 2,
-	'path' => __DIR__ . '/install/install.php',
-];
-$ignoreErrors[] = [
 	// identifier: foreach.emptyArray
 	'message' => '#^Empty array passed to foreach\\.$#',
 	'count' => 2,
@@ -524,18 +518,6 @@ $ignoreErrors[] = [
 	'path' => __DIR__ . '/src/Cluster.php',
 ];
 $ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method CommonDBChild\\:\\:showChildsForItemForm\\(\\) should return bool\\|void but returns string\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/CommonDBChild.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method CommonDBConnexity\\:\\:getItemsAssociationRequest\\(\\) should return array but returns DBmysqlIterator\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/CommonDBConnexity.php',
-];
-$ignoreErrors[] = [
 	// identifier: return.void
 	'message' => '#^Method CommonDBRelation\\:\\:processMassiveActionsForOneItemtype\\(\\) with return type void returns false but should not return anything\\.$#',
 	'count' => 1,
@@ -728,18 +710,6 @@ $ignoreErrors[] = [
 	'path' => __DIR__ . '/src/CommonITILObject.php',
 ];
 $ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method CommonITILObject\\:\\:getDefaultActor\\(\\) should return bool but returns int\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/CommonITILObject.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method CommonITILObject\\:\\:getDefaultActorRightSearch\\(\\) should return bool but returns string\\.$#',
-	'count' => 2,
-	'path' => __DIR__ . '/src/CommonITILObject.php',
-];
-$ignoreErrors[] = [
 	// identifier: return.void
 	'message' => '#^Method CommonITILObject\\:\\:showSubForm\\(\\) with return type void returns mixed but should not return anything\\.$#',
 	'count' => 1,
@@ -754,7 +724,7 @@ $ignoreErrors[] = [
 $ignoreErrors[] = [
 	// identifier: booleanAnd.rightAlwaysTrue
 	'message' => '#^Right side of && is always true\\.$#',
-	'count' => 2,
+	'count' => 1,
 	'path' => __DIR__ . '/src/CommonITILObject.php',
 ];
 $ignoreErrors[] = [
@@ -898,24 +868,6 @@ $ignoreErrors[] = [
 $ignoreErrors[] = [
 	// identifier: instanceof.alwaysFalse
 	'message' => '#^Instanceof between static\\(Computer\\) and PDU will always evaluate to false\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/Computer.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method Computer\\:\\:getDcBreadcrumbSpecificValueToDisplay\\(\\) should return array but returns string\\.$#',
-	'count' => 2,
-	'path' => __DIR__ . '/src/Computer.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method Computer\\:\\:isEnclosurePart\\(\\) should return Enclosure\\|false but returns array\\|bool\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/Computer.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method Computer\\:\\:isRackPart\\(\\) should return Rack\\|false but returns array\\|bool\\.$#',
 	'count' => 1,
 	'path' => __DIR__ . '/src/Computer.php',
 ];
@@ -1196,24 +1148,6 @@ $ignoreErrors[] = [
 	'path' => __DIR__ . '/src/DCRoom.php',
 ];
 $ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method DCRoom\\:\\:getDcBreadcrumbSpecificValueToDisplay\\(\\) should return array but returns string\\.$#',
-	'count' => 2,
-	'path' => __DIR__ . '/src/DCRoom.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method DCRoom\\:\\:isEnclosurePart\\(\\) should return Enclosure\\|false but returns array\\|bool\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/DCRoom.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method DCRoom\\:\\:isRackPart\\(\\) should return Rack\\|false but returns array\\|bool\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/DCRoom.php',
-];
-$ignoreErrors[] = [
 	// identifier: identical.alwaysFalse
 	'message' => '#^Strict comparison using \\=\\=\\= between array and false will always evaluate to false\\.$#',
 	'count' => 1,
@@ -1444,24 +1378,6 @@ $ignoreErrors[] = [
 $ignoreErrors[] = [
 	// identifier: instanceof.alwaysFalse
 	'message' => '#^Instanceof between static\\(Enclosure\\) and PDU will always evaluate to false\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/Enclosure.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method Enclosure\\:\\:getDcBreadcrumbSpecificValueToDisplay\\(\\) should return array but returns string\\.$#',
-	'count' => 2,
-	'path' => __DIR__ . '/src/Enclosure.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method Enclosure\\:\\:isEnclosurePart\\(\\) should return Enclosure\\|false but returns array\\|bool\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/Enclosure.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method Enclosure\\:\\:isRackPart\\(\\) should return Rack\\|false but returns array\\|bool\\.$#',
 	'count' => 1,
 	'path' => __DIR__ . '/src/Enclosure.php',
 ];
@@ -3314,12 +3230,6 @@ $ignoreErrors[] = [
 	'path' => __DIR__ . '/src/Itil_Project.php',
 ];
 $ignoreErrors[] = [
-	// identifier: return.void
-	'message' => '#^Method KnowbaseItem\\:\\:showManageForm\\(\\) with return type void returns false but should not return anything\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/KnowbaseItem.php',
-];
-$ignoreErrors[] = [
 	// identifier: method.childReturnType
 	'message' => '#^Return type \\(void\\) of method KnowbaseItem\\:\\:showForm\\(\\) should be compatible with return type \\(bool\\) of method CommonDBTM\\:\\:showForm\\(\\)$#',
 	'count' => 1,
@@ -3548,24 +3458,6 @@ $ignoreErrors[] = [
 	'path' => __DIR__ . '/src/Monitor.php',
 ];
 $ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method Monitor\\:\\:getDcBreadcrumbSpecificValueToDisplay\\(\\) should return array but returns string\\.$#',
-	'count' => 2,
-	'path' => __DIR__ . '/src/Monitor.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method Monitor\\:\\:isEnclosurePart\\(\\) should return Enclosure\\|false but returns array\\|bool\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/Monitor.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method Monitor\\:\\:isRackPart\\(\\) should return Rack\\|false but returns array\\|bool\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/Monitor.php',
-];
-$ignoreErrors[] = [
 	// identifier: identical.alwaysFalse
 	'message' => '#^Strict comparison using \\=\\=\\= between array and false will always evaluate to false\\.$#',
 	'count' => 1,
@@ -3580,24 +3472,6 @@ $ignoreErrors[] = [
 $ignoreErrors[] = [
 	// identifier: instanceof.alwaysFalse
 	'message' => '#^Instanceof between static\\(NetworkEquipment\\) and PDU will always evaluate to false\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/NetworkEquipment.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method NetworkEquipment\\:\\:getDcBreadcrumbSpecificValueToDisplay\\(\\) should return array but returns string\\.$#',
-	'count' => 2,
-	'path' => __DIR__ . '/src/NetworkEquipment.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method NetworkEquipment\\:\\:isEnclosurePart\\(\\) should return Enclosure\\|false but returns array\\|bool\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/NetworkEquipment.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method NetworkEquipment\\:\\:isRackPart\\(\\) should return Rack\\|false but returns array\\|bool\\.$#',
 	'count' => 1,
 	'path' => __DIR__ . '/src/NetworkEquipment.php',
 ];
@@ -3722,24 +3596,6 @@ $ignoreErrors[] = [
 	'path' => __DIR__ . '/src/OlaLevel_Ticket.php',
 ];
 $ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method PDU\\:\\:getDcBreadcrumbSpecificValueToDisplay\\(\\) should return array but returns string\\.$#',
-	'count' => 2,
-	'path' => __DIR__ . '/src/PDU.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method PDU\\:\\:isEnclosurePart\\(\\) should return Enclosure\\|false but returns array\\|bool\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/PDU.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method PDU\\:\\:isRackPart\\(\\) should return Rack\\|false but returns array\\|bool\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/PDU.php',
-];
-$ignoreErrors[] = [
 	// identifier: identical.alwaysFalse
 	'message' => '#^Strict comparison using \\=\\=\\= between array and false will always evaluate to false\\.$#',
 	'count' => 1,
@@ -3748,24 +3604,6 @@ $ignoreErrors[] = [
 $ignoreErrors[] = [
 	// identifier: instanceof.alwaysFalse
 	'message' => '#^Instanceof between static\\(PassiveDCEquipment\\) and PDU will always evaluate to false\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/PassiveDCEquipment.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method PassiveDCEquipment\\:\\:getDcBreadcrumbSpecificValueToDisplay\\(\\) should return array but returns string\\.$#',
-	'count' => 2,
-	'path' => __DIR__ . '/src/PassiveDCEquipment.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method PassiveDCEquipment\\:\\:isEnclosurePart\\(\\) should return Enclosure\\|false but returns array\\|bool\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/PassiveDCEquipment.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method PassiveDCEquipment\\:\\:isRackPart\\(\\) should return Rack\\|false but returns array\\|bool\\.$#',
 	'count' => 1,
 	'path' => __DIR__ . '/src/PassiveDCEquipment.php',
 ];
@@ -3796,24 +3634,6 @@ $ignoreErrors[] = [
 $ignoreErrors[] = [
 	// identifier: instanceof.alwaysFalse
 	'message' => '#^Instanceof between static\\(Peripheral\\) and PDU will always evaluate to false\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/Peripheral.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method Peripheral\\:\\:getDcBreadcrumbSpecificValueToDisplay\\(\\) should return array but returns string\\.$#',
-	'count' => 2,
-	'path' => __DIR__ . '/src/Peripheral.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method Peripheral\\:\\:isEnclosurePart\\(\\) should return Enclosure\\|false but returns array\\|bool\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/Peripheral.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method Peripheral\\:\\:isRackPart\\(\\) should return Rack\\|false but returns array\\|bool\\.$#',
 	'count' => 1,
 	'path' => __DIR__ . '/src/Peripheral.php',
 ];
@@ -4042,24 +3862,6 @@ $ignoreErrors[] = [
 $ignoreErrors[] = [
 	// identifier: instanceof.alwaysFalse
 	'message' => '#^Instanceof between static\\(Rack\\) and PDU will always evaluate to false\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/Rack.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method Rack\\:\\:getDcBreadcrumbSpecificValueToDisplay\\(\\) should return array but returns string\\.$#',
-	'count' => 2,
-	'path' => __DIR__ . '/src/Rack.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method Rack\\:\\:isEnclosurePart\\(\\) should return Enclosure\\|false but returns array\\|bool\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/Rack.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method Rack\\:\\:isRackPart\\(\\) should return Rack\\|false but returns array\\|bool\\.$#',
 	'count' => 1,
 	'path' => __DIR__ . '/src/Rack.php',
 ];
@@ -4484,12 +4286,6 @@ $ignoreErrors[] = [
 	'path' => __DIR__ . '/src/Ticket.php',
 ];
 $ignoreErrors[] = [
-	// identifier: return.type
-	'message' => '#^Method Ticket\\:\\:getDefaultActorRightSearch\\(\\) should return bool but returns string\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/Ticket.php',
-];
-$ignoreErrors[] = [
 	// identifier: return.empty
 	'message' => '#^Method Ticket\\:\\:showForm\\(\\) should return bool but empty return statement found\\.$#',
 	'count' => 1,
@@ -4506,12 +4302,6 @@ $ignoreErrors[] = [
 	'message' => '#^Static method Ticket\\:\\:getListForItemSearchOptionsCriteria\\(\\) is unused\\.$#',
 	'count' => 1,
 	'path' => __DIR__ . '/src/Ticket.php',
-];
-$ignoreErrors[] = [
-	// identifier: return.void
-	'message' => '#^Method TicketTemplate\\:\\:showHelpdeskPreview\\(\\) with return type void returns false but should not return anything\\.$#',
-	'count' => 1,
-	'path' => __DIR__ . '/src/TicketTemplate.php',
 ];
 $ignoreErrors[] = [
 	// identifier: function.impossibleType

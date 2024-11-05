@@ -8,7 +8,6 @@
  * http://glpi-project.org
  *
  * @copyright 2015-2024 Teclib' and contributors.
- * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
  * ---------------------------------------------------------------------
@@ -33,26 +32,21 @@
  * ---------------------------------------------------------------------
  */
 
-/** @var \Glpi\Controller\LegacyFileLoadController $this */
-$this->setAjax();
+namespace Glpi\Routing\Attribute;
 
-header("Content-Type: text/html; charset=UTF-8");
-Html::header_nocache();
+use Symfony\Component\Routing\Attribute\Route;
 
-if (isset($_POST['action'])) {
-    $item_rack = new Item_Rack();
-    $item_rack->getFromDB((int) $_POST['id']);
-    $answer    = [];
-
-    switch ($_POST['action']) {
-        case 'move_item':
-            $answer['status'] = $item_rack->update([
-                'id'       => (int) $_POST['id'],
-                'position' => (int) $_POST['position'],
-                'hpos'     => (int) $_POST['hpos'],
-            ]);
-            break;
+#[\Attribute(\Attribute::IS_REPEATABLE | \Attribute::TARGET_CLASS | \Attribute::TARGET_METHOD)]
+class ItemtypeFormLegacyRoute extends Route
+{
+    /**
+     * @phpstan-param class-string<\CommonDBTM> $itemtype
+     */
+    public function __construct(string $itemtype)
+    {
+        parent::__construct(
+            path: $itemtype::getFormURL(false),
+            name: 'glpi_itemtype_' . \strtolower($itemtype) . '_form_legacy',
+        );
     }
-
-    echo json_encode($answer);
 }
