@@ -811,18 +811,18 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
         $group_table = Group_SavedSearch::getTable();
         $entity_table = Entity_SavedSearch::getTable();
         $criteria = [
-                'SELECT' => [
-                    "$table.*",
-                    new QueryExpression(
-                        "IF($utable.users_id = " . Session::getLoginUserID() . ", $utable.id, NULL) AS is_default"
-                    ),
-                ],
-                'FROM' => $table,
-                'ORDERBY' => [
-                    'itemtype',
-                    'name'
-                ]
-            ] + self::getDefaultJoin();
+            'SELECT' => [
+                "$table.*",
+                new QueryExpression(
+                    "IF($utable.users_id = " . Session::getLoginUserID() . ", $utable.id, NULL) AS is_default"
+                ),
+            ],
+            'FROM' => $table,
+            'ORDERBY' => [
+                'itemtype',
+                'name'
+            ]
+        ] + self::getDefaultJoin();
 
         $criteria['LEFT JOIN'][$utable] = [
             'ON' => [
