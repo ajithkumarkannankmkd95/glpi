@@ -42,19 +42,13 @@
 $table = SavedSearch::getTable();
 $field = 'is_private';
 if ($DB->fieldExists($table, $field)) {
-    $obj = new SavedSearch();
-    $entity_table = Entity_SavedSearch::getTable();
-    foreach ($obj->find(['is_private' => 0]) as $search) {
-        $DB->insertOrDie(
-            $entity_table,
-            [
-                'savedsearches_id' => $search['id'],
-                'entities_id' => $search['entities_id'],
-                'is_recursive' => $search['is_recursive']
-            ],
-            'Create link between saved search and entity'
-        );
-    }
+    $query = 'INSERT INTO glpi_entities_savedsearches (savedsearches_id, entities_id, is_recursive)
+SELECT id, entities_id, is_recursive
+FROM glpi_savedsearches WHERE is_private = 0;';
+    $DB->doQueryOrDie(
+        $query,
+        'Create link between saved search and entity'
+    );
 
     $migration->dropField($table, $field);
 

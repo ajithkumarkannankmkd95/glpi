@@ -2232,8 +2232,8 @@ final class SQLProvider implements SearchProviderInterface
                 break;
 
             case 'SavedSearch':
-                $criterias = \SavedSearch::getVisibilityCriteria(false)['LEFT JOIN'];
-                if (array_key_exists('LEFT JOIN', $criterias)) {
+                $criterias = \SavedSearch::getVisibilityCriteria(false);
+                if (isset($criterias['LEFT JOIN'])) {
                     $out = ['LEFT JOIN' => $criterias['LEFT JOIN']];
                     foreach ($criterias['LEFT JOIN'] as $table => $criteria) {
                         $already_link_tables[] = $table;

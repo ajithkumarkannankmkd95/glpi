@@ -65,7 +65,6 @@ if (isset($_POST['type']) && !empty($_POST['type'])) {
     switch ($_POST['type']) {
         case 'User':
             echo "<td>";
-            $params =
             $params = ['name' => $prefix . 'users_id' . $suffix];
             if (isset($_POST['right'])) {
                 $params['right'] = isset($_POST['allusers']) ? 'all' : $_POST['right'];
