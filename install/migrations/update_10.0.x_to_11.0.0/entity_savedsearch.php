@@ -53,5 +53,5 @@ if (!$DB->tableExists('glpi_entities_savedsearches')) {
         KEY `entities_id` (`entities_id`),
         KEY `is_recursive` (`is_recursive`)
     ) ENGINE = InnoDB ROW_FORMAT = DYNAMIC DEFAULT CHARSET = {$default_charset} COLLATE = {$default_collation};";
-    $DB->doQueryOrDie($query, "add table glpi_entities_savedsearches");
+    $DB->doQuery($query);
 }

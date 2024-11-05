@@ -45,10 +45,7 @@ if ($DB->fieldExists($table, $field)) {
     $query = 'INSERT INTO glpi_entities_savedsearches (savedsearches_id, entities_id, is_recursive)
 SELECT id, entities_id, is_recursive
 FROM glpi_savedsearches WHERE is_private = 0;';
-    $DB->doQueryOrDie(
-        $query,
-        'Create link between saved search and entity'
-    );
+    $DB->doQuery($query);
 
     $migration->dropField($table, $field);
 

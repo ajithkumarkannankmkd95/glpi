@@ -211,7 +211,7 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
         if (self::canView()) {
             $nb = 0;
             switch ($item->getType()) {
-                case 'SavedSearch':
+                case SavedSearch::class:
                     if (Session::haveRight(self::$rightname, CREATE)) {
                         if ($_SESSION['glpishow_count_on_tabs']) {
                             $nb = $item->countVisibilities();
@@ -1469,10 +1469,10 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
 
     /**
      * No specific right needed to be a target
-     * @return false
+     * @return string
      */
     public function getVisibilityRight()
     {
-        return false;
+        return '';
     }
 }

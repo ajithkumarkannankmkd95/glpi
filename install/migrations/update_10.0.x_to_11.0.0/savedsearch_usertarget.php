@@ -51,5 +51,5 @@ if (!$DB->tableExists('glpi_savedsearches_usertargets')) {
         KEY `savedsearches_id` (`savedsearches_id`),
         KEY `users_id` (`users_id`)
     ) ENGINE = InnoDB ROW_FORMAT = DYNAMIC DEFAULT CHARSET = {$default_charset} COLLATE = {$default_collation};";
-    $DB->doQueryOrDie($query, "add table glpi_savedsearches_usertargets");
+    $DB->doQuery($query);
 }
