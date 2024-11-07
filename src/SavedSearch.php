@@ -169,15 +169,34 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
     public function canCreateItem(): bool
     {
         if (isset($this->input['is_private']) && $this->input['is_private'] == 0) {
-            return Session::haveRight('config', UPDATE);
+            return self::canCreatePublic();
         }
         return parent::canCreateItem();
     }
 
+    /**
+     * @return bool
+     */
+    public static function canCreatePublic(): bool
+    {
+        return (Session::haveRight('config', UPDATE) ||
+            Session::haveRight(self::$rightname, CREATE));
+    }
+
     public function canViewItem(): bool
     {
-        return (Session::haveRight('config', READ)
-            || $this->fields['users_id'] == Session::getLoginUserID());
+        if (
+            Session::haveRight('config', READ)
+            || $this->fields['users_id'] == Session::getLoginUserID()
+        ) {
+            return true;
+        }
+
+        if (array_key_exists($this->getID(), $this->getMine())) {
+            return true;
+        }
+
+        return false;
     }
 
     public function post_getFromDB()
@@ -459,7 +478,7 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
         TemplateRenderer::getInstance()->display('pages/tools/savedsearch/form.html.twig', [
             'item' => $this,
             'can_create' => self::canCreate(),
-            'can_create_public' => Session::haveRight('config', UPDATE),
+            'can_create_public' => self::canCreatePublic(),
             'params' => $options
         ]);
     }
