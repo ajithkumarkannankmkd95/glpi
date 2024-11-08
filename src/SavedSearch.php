@@ -90,7 +90,7 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
                      = __s('Change count method');
         if (Session::haveRight('transfer', READ)) {
             $actions[self::class . MassiveAction::CLASS_ACTION_SEPARATOR . 'change_entity']
-                = __s('Change visibility');
+                     = __s('Change visibility');
         }
         return $actions;
     }
@@ -231,7 +231,7 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
             $nb = 0;
             switch ($item->getType()) {
                 case SavedSearch::class:
-                    if (Session::haveRight(self::$rightname, CREATE)) {
+                    if (self::canCreatePublic()) {
                         if ($_SESSION['glpishow_count_on_tabs']) {
                             $nb = $item->countVisibilities();
                         }
@@ -282,93 +282,86 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
     {
         $tab = parent::rawSearchOptions();
 
-        $tab[] = [
-            'id' => '2',
-            'table' => $this->getTable(),
-            'field' => 'id',
-            'name' => __('ID'),
-            'massiveaction' => false, // implicit field is id
-            'datatype' => 'number'
+        $tab[] = ['id'                 => '2',
+            'table'              => $this->getTable(),
+            'field'              => 'id',
+            'name'               => __('ID'),
+            'massiveaction'      => false, // implicit field is id
+            'datatype'           => 'number'
+        ];
+
+        $tab[] = ['id'                 => 3,
+            'table'              => User::getTable(),
+            'field'              => 'name',
+            'name'               => User::getTypeName(1),
+            'datatype'           => 'dropdown'
+        ];
+
+        $tab[] = ['id'                 => '8',
+            'table'              => $this->getTable(),
+            'field'              => 'itemtype',
+            'name'               => __('Item type'),
+            'massiveaction'      => false,
+            'datatype'           => 'itemtypename',
+            'types'              => self::getUsedItemtypes()
+        ];
+
+        $tab[] = ['id'                 => 9,
+            'table'              => $this->getTable(),
+            'field'              => 'last_execution_time',
+            'name'               => __('Last duration (ms)'),
+            'massiveaction'      => false,
+            'datatype'           => 'number'
+        ];
+
+        $tab[] = ['id'                 => 10,
+            'table'              => $this->getTable(),
+            'field'              => 'do_count',
+            'name'               => __('Count'),
+            'massiveaction'      => true,
+            'datatype'           => 'specific',
+            'searchtype'         => 'equals'
         ];
 
         $tab[] = [
-            'id' => 3,
-            'table' => User::getTable(),
-            'field' => 'name',
-            'name' => User::getTypeName(1),
-            'datatype' => 'dropdown'
-        ];
-
-        $tab[] = [
-            'id' => '8',
-            'table' => $this->getTable(),
-            'field' => 'itemtype',
-            'name' => __('Item type'),
+            'id'            => 11,
+            'table'         => SavedSearch_User::getTable(),
+            'field'         => 'users_id',
+            'name'          => __('Default'),
             'massiveaction' => false,
-            'datatype' => 'itemtypename',
-            'types' => self::getUsedItemtypes()
-        ];
-
-        $tab[] = [
-            'id' => 9,
-            'table' => $this->getTable(),
-            'field' => 'last_execution_time',
-            'name' => __('Last duration (ms)'),
-            'massiveaction' => false,
-            'datatype' => 'number'
-        ];
-
-        $tab[] = [
-            'id' => 10,
-            'table' => $this->getTable(),
-            'field' => 'do_count',
-            'name' => __('Count'),
-            'massiveaction' => true,
-            'datatype' => 'specific',
-            'searchtype' => 'equals'
-        ];
-
-        $tab[] = [
-            'id' => 11,
-            'table' => SavedSearch_User::getTable(),
-            'field' => 'users_id',
-            'name' => __('Default'),
-            'massiveaction' => false,
-            'joinparams' => [
-                'jointype' => 'child',
+            'joinparams'    => [
+                'jointype'  => 'child',
                 'condition' => "AND NEWTABLE.users_id = " . Session::getLoginUserID()
             ],
-            'datatype' => 'specific',
-            'searchtype' => [
+            'datatype'      => 'specific',
+            'searchtype'    => [
                 0 => 'equals',
                 1 => 'notequals'
             ],
         ];
 
-        $tab[] = [
-            'id' => 12,
-            'table' => $this->getTable(),
-            'field' => 'counter',
-            'name' => __('Counter'),
-            'massiveaction' => false,
-            'datatype' => 'number'
+        $tab[] = ['id'                 => 12,
+            'table'              => $this->getTable(),
+            'field'              => 'counter',
+            'name'               => __('Counter'),
+            'massiveaction'      => false,
+            'datatype'           => 'number'
+        ];
+
+        $tab[] = ['id'                 => 13,
+            'table'              => $this->getTable(),
+            'field'              => 'last_execution_date',
+            'name'               => __('Last execution date'),
+            'massiveaction'      => false,
+            'datatype'           => 'datetime'
         ];
 
         $tab[] = [
-            'id' => 13,
-            'table' => $this->getTable(),
-            'field' => 'last_execution_date',
-            'name' => __('Last execution date'),
-            'massiveaction' => false,
-            'datatype' => 'datetime'
-        ];
-
-        $tab[] = [
-            'id' => '80',
-            'table' => 'glpi_entities',
-            'field' => 'completename',
-            'name' => Entity::getTypeName(1),
-            'datatype' => 'dropdown'
+            'id'                 => '80',
+            'table'              => 'glpi_entities',
+            'field'              => 'completename',
+            'name'               => Entity::getTypeName(1),
+            'datatype'           => 'dropdown'
         ];
 
         return $tab;
@@ -423,18 +416,18 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
             ($this->fields['users_id'] == 0)
             && ($uid = Session::getLoginUserID())
         ) {
-            $this->input['users_id'] = $uid;
+            $this->input['users_id']  = $uid;
             $this->fields['users_id'] = $uid;
-            $this->updates[] = "users_id";
+            $this->updates[]          = "users_id";
         }
     }
 
     public function post_getEmpty()
     {
-        $this->fields["users_id"] = Session::getLoginUserID();
-        $this->fields["is_private"] = 1;
+        $this->fields["users_id"]     = Session::getLoginUserID();
+        $this->fields["is_private"]   = 1;
         $this->fields["is_recursive"] = 1;
-        $this->fields["entities_id"] = Session::getActiveEntity();
+        $this->fields["entities_id"]  = Session::getActiveEntity();
     }
 
     public function cleanDBonPurge()
@@ -452,8 +445,8 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
     /**
      * Print the saved search form
      *
-     * @param integer $ID ID of the item
-     * @param array $options possible options:
+     * @param integer $ID      ID of the item
+     * @param array   $options possible options:
      *                         - target for the Form
      *                         - type when adding
      *                         - url when adding
@@ -486,8 +479,8 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
     /**
      * Prepare query to store depending on the type
      *
-     * @param integer $type Saved search type (self::SEARCH, self::URI or self::ALERT)
-     * @param array $query_tab Parameters
+     * @param integer $type      Saved search type (self::SEARCH, self::URI or self::ALERT)
+     * @param array   $query_tab Parameters
      *
      * @return array clean query array
      **/
@@ -517,9 +510,9 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
     /**
      * Prepare query to use depending of the type
      *
-     * @param integer $type Saved search type (see SavedSearch constants)
-     * @param array $query_tab Parameters array
-     * @param bool $enable_partial_warnings display warning messages about partial loading
+     * @param integer $type      Saved search type (see SavedSearch constants)
+     * @param array   $query_tab Parameters array
+     * @param bool    $enable_partial_warnings display warning messages about partial loading
      *
      * @return array prepared query array
      **/
@@ -530,7 +523,7 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
             case self::ALERT:
                 // Check if all data are valid
                 $query_tab_save = $query_tab;
-                $partial_load = false;
+                $partial_load   = false;
                 // Standard search
                 if (isset($query_tab_save['criteria']) && count($query_tab_save['criteria'])) {
                     unset($query_tab['criteria']);
@@ -691,10 +684,10 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
             // Is default view for this itemtype already exists ?
             $iterator = $DB->request([
                 'SELECT' => 'id',
-                'FROM' => 'glpi_savedsearches_users',
-                'WHERE' => [
-                    'users_id' => Session::getLoginUserID(),
-                    'itemtype' => $this->fields['itemtype']
+                'FROM'   => 'glpi_savedsearches_users',
+                'WHERE'  => [
+                    'users_id'  => Session::getLoginUserID(),
+                    'itemtype'  => $this->fields['itemtype']
                 ]
             ]);
 
@@ -702,14 +695,14 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
                 // already exists update it
                 $updateID = $result['id'];
                 $dd->update([
-                    'id' => $updateID,
-                    'savedsearches_id' => $ID
+                    'id'                 => $updateID,
+                    'savedsearches_id'   => $ID
                 ]);
             } else {
                 $dd->add([
-                    'savedsearches_id' => $ID,
-                    'users_id' => Session::getLoginUserID(),
-                    'itemtype' => $this->fields['itemtype']
+                    'savedsearches_id'   => $ID,
+                    'users_id'           => Session::getLoginUserID(),
+                    'itemtype'           => $this->fields['itemtype']
                 ]);
             }
         }
@@ -735,11 +728,11 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
             // Is default view for this itemtype already exists ?
             $iterator = $DB->request([
                 'SELECT' => 'id',
-                'FROM' => 'glpi_savedsearches_users',
-                'WHERE' => [
-                    'users_id' => Session::getLoginUserID(),
-                    'savedsearches_id' => $ID,
-                    'itemtype' => $this->fields['itemtype']
+                'FROM'   => 'glpi_savedsearches_users',
+                'WHERE'  => [
+                    'users_id'           => Session::getLoginUserID(),
+                    'savedsearches_id'   => $ID,
+                    'itemtype'           => $this->fields['itemtype']
                 ]
             ]);
 
@@ -814,8 +807,8 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
      * return an array of saved searches for a given itemtype
      *
      * @param string $itemtype if given filter saved search by only this one
-     * @param bool $inverse if true, the `itemtype` params filter by "not" criteria
-     * @param bool $enable_partial_warnings display warning messages about partial loading
+     * @param bool   $inverse if true, the `itemtype` params filter by "not" criteria
+     * @param bool   $enable_partial_warnings display warning messages about partial loading
      *
      * @return array
      */
@@ -983,16 +976,16 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
      * return Html list of saved searches for a given itemtype
      *
      * @param string $itemtype
-     * @param bool $inverse
-     * @param bool $enable_partial_warnings display warning messages about partial loading
+     * @param bool   $inverse
+     * @param bool   $enable_partial_warnings display warning messages about partial loading
      *
      * @return void
      */
     public function displayMine(?string $itemtype = null, bool $inverse = false, bool $enable_partial_warnings = true)
     {
         TemplateRenderer::getInstance()->display('layout/parts/saved_searches_list.html.twig', [
-            'active' => $_SESSION['glpi_loaded_savedsearch'] ?? "",
-            'current_user' => Session::getLoginUserID(),
+            'active'         => $_SESSION['glpi_loaded_savedsearch'] ?? "",
+            'current_user'   => Session::getLoginUserID(),
             'saved_searches' => $this->getMine($itemtype, $inverse, $enable_partial_warnings),
         ]);
     }
@@ -1041,9 +1034,9 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
 
         $types = [];
         $iterator = $DB->request([
-            'SELECT' => 'itemtype',
-            'DISTINCT' => true,
-            'FROM' => static::getTable()
+            'SELECT'          => 'itemtype',
+            'DISTINCT'        => true,
+            'FROM'            => static::getTable()
         ]);
         foreach ($iterator as $data) {
             $types[] = $data['itemtype'];
@@ -1054,7 +1047,7 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
     /**
      * Update bookmark execution time after it has been loaded
      *
-     * @param integer $id Saved search ID
+     * @param integer $id   Saved search ID
      * @param integer $time Execution time, in milliseconds
      *
      * @return void
@@ -1068,9 +1061,9 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
             $DB->update(
                 static::getTable(),
                 [
-                    'last_execution_time' => $time,
-                    'last_execution_date' => date('Y-m-d H:i:s'),
-                    'counter' => new QueryExpression($DB->quoteName('counter') . ' + 1')
+                    'last_execution_time'   => $time,
+                    'last_execution_date'   => date('Y-m-d H:i:s'),
+                    'counter'               => new QueryExpression($DB->quoteName('counter') . ' + 1')
                 ],
                 [
                     'id' => $id
@@ -1110,7 +1103,7 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
 
         switch ($field) {
             case 'do_count':
-                $options['name'] = $name;
+                $options['name']  = $name;
                 $options['value'] = $values[$field];
                 return self::dropdownDoCount($options);
         }
@@ -1129,8 +1122,8 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
      **/
     public static function dropdownDoCount(array $options = [])
     {
-        $p['name'] = 'do_count';
-        $p['value'] = self::COUNT_AUTO;
+        $p['name']    = 'do_count';
+        $p['value']   = self::COUNT_AUTO;
         $p['display'] = true;
 
         if (is_array($options) && count($options)) {
@@ -1151,7 +1144,7 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
     /**
      * Set do_count from massive actions
      *
-     * @param array $ids Items IDs
+     * @param array   $ids      Items IDs
      * @param integer $do_count One of self::COUNT_*
      *
      * @return boolean
@@ -1176,8 +1169,8 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
     /**
      * Set entity and recursivity from massive actions
      *
-     * @param array $ids Items IDs
-     * @param integer $eid Entityy ID
+     * @param array   $ids   Items IDs
+     * @param integer $eid   Entityy ID
      * @param boolean $recur Recursivity
      *
      * @return boolean
@@ -1190,7 +1183,7 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
         $result = $DB->update(
             $this->getTable(),
             [
-                'entities_id' => $eid,
+                'entities_id'  => $eid,
                 'is_recursive' => $recur
             ],
             [
@@ -1230,12 +1223,10 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
             $lastdate = new \DateTime($task->getField('lastrun'));
             $lastdate->sub(new \DateInterval('P7D'));
 
-            $iterator = $DB->request([
-                'FROM' => self::getTable(),
+            $iterator = $DB->request(['FROM'   => self::getTable(),
                 'FIELDS' => ['id', 'query', 'itemtype', 'type'],
-                'WHERE' => [
-                    'last_execution_date'
-                    => ['<', $lastdate->format('Y-m-d H:i:s')]
+                'WHERE'  => ['last_execution_date'
+                => ['<' , $lastdate->format('Y-m-d H:i:s')]
                 ]
             ]);
 
@@ -1247,11 +1238,11 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
                 $query = $DB->buildUpdate(
                     self::getTable(),
                     [
-                        'last_execution_time' => new QueryParam(),
-                        'last_execution_date' => new QueryParam()
+                        'last_execution_time'   => new QueryParam(),
+                        'last_execution_date'   => new QueryParam()
                     ],
                     [
-                        'id' => new QueryParam()
+                        'id'                    => new QueryParam()
                     ]
                 );
                 $stmt = $DB->prepare($query);
@@ -1365,12 +1356,12 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
         if ($notif->isNewItem()) {
             $notif->check(-1, CREATE);
             $notif->add([
-                'name' => SavedSearch::getTypeName(1) . ' ' . $this->getName(),
-                'entities_id' => $_SESSION["glpidefault_entity"],
-                'itemtype' => SavedSearch_Alert::getType(),
-                'event' => 'alert_' . $this->getID(),
-                'is_active' => 0,
-                'date_creation' => date('Y-m-d H:i:s')
+                'name'            => SavedSearch::getTypeName(1) . ' ' . $this->getName(),
+                'entities_id'     => $_SESSION["glpidefault_entity"],
+                'itemtype'        => SavedSearch_Alert::getType(),
+                'event'           => 'alert_' . $this->getID(),
+                'is_active'       => 0,
+                'date_creation'   => date('Y-m-d H:i:s')
             ]);
 
             Session::addMessageAfterRedirect(__s('Notification has been created!'), INFO);
