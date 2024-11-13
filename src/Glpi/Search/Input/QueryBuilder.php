@@ -39,6 +39,7 @@ use AllAssets;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Search\SearchEngine;
 use Glpi\Search\SearchOption;
+use Glpi\Toolbox\URL;
 use Toolbox;
 
 final class QueryBuilder implements SearchInputInterface
@@ -86,6 +87,7 @@ final class QueryBuilder implements SearchInputInterface
         foreach ($params as $key => $val) {
             $p[$key] = $val;
         }
+        $p['target'] = URL::sanitizeURL($p['target']);
 
         // Itemtype name used in JS function names, etc
         $normalized_itemtype = Toolbox::getNormalizedItemtype($itemtype);
@@ -596,7 +598,7 @@ final class QueryBuilder implements SearchInputInterface
 
     /**
      * Display a group of nested criteria.
-     * A group (parent) criteria  can contains children criteria (who also cantains children, etc)
+     * A group (parent) criteria  can contain children criteria (who also contain children, etc)
      *
      * @since 9.4
      *
@@ -938,8 +940,7 @@ final class QueryBuilder implements SearchInputInterface
     /**
      * Get the input value validation pattern for given datatype.
      *
-     * @param string    $table
-     * @param string    $field
+     * @param string    $datatype
      * @param bool      $with_delimiters
      *      True to return a complete pattern, including delimiters.
      *      False to return a pattern without delimiters, that can be used inside another regex or in a HTML input pattern.

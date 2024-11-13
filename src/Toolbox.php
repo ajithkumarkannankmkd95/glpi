@@ -575,18 +575,19 @@ class Toolbox
             finfo_close($finfo);
         }
 
-       // don't download picture files, see them inline
-        $attachment = "";
-       // if not begin 'image/'
+        $can_be_inlined = false;
         if (
-            strncmp($mime, 'image/', 6) !== 0
-            && $mime != 'application/pdf'
-            // svg vector of attack, force attachment
-            // see https://github.com/glpi-project/glpi/issues/3873
-            || $mime == 'image/svg+xml'
+            str_starts_with(strtolower($mime), 'image/')
+            && strtolower($mime) !== 'image/svg+xml'
         ) {
-            $attachment = ' attachment;';
+            // images files can be inlined
+            // except for svg (vector of attack, see https://github.com/glpi-project/glpi/issues/3873)
+            $can_be_inlined = true;
+        } elseif (strtolower($mime) === 'application/pdf') {
+            // PDF files can be inlined
+            $can_be_inlined = true;
         }
+        $attachment = $can_be_inlined === false ? ' attachment;' : '';
 
         $etag = md5_file($file);
         $lastModified = filemtime($file);
@@ -1767,29 +1768,6 @@ class Toolbox
 
         return $tab;
     }
-
-
-    /**
-     * Display a mail server configuration form
-     *
-     * @param string $value  host connect string ex {localhost:993/imap/ssl}INBOX
-     *
-     * @return string  type of the server (imap/pop)
-     **/
-    public static function showMailServerConfig($value)
-    {
-        if (!Config::canUpdate()) {
-            return '';
-        }
-
-        $tab = Toolbox::parseMailServerConnectString($value);
-        TemplateRenderer::getInstance()->display('pages/setup/mailcollector/server_config_fields.html.twig', [
-            'connect_opts' => $tab,
-            'host' => $value
-        ]);
-        return $tab['type'];
-    }
-
 
     /**
      * @param array $input

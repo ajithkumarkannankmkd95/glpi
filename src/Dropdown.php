@@ -153,6 +153,9 @@ class Dropdown
                 $params[$key] = $val;
             }
         }
+
+        $params['name'] = Html::sanitizeInputName($params['name']);
+
         $output       = '';
         $name         = $params['emptylabel'];
         $comment      = "";
@@ -1877,7 +1880,11 @@ JAVASCRIPT;
         if (array_key_exists('default_itemtype', $options)) {
             $out .= "<script type='text/javascript' >\n";
             $out .= "$(function() {";
-            $out .= Html::jsSetDropdownValue($field_id, $params['default_itemtype']);
+            $out .= sprintf(
+                '$("#%s").trigger("setValue", "%s");',
+                htmlescape($field_id),
+                htmlescape($params['default_itemtype'])
+            );
             $out .= "});</script>\n";
 
             $p_ajax["idtable"] = $params['default_itemtype'];
@@ -2212,40 +2219,6 @@ JAVASCRIPT;
             'disabled'            => $params['disabled'],
         ]);
     }
-
-
-    /**
-     * Toggle view in LDAP user import/synchro between no restriction and date restriction
-     *
-     * @param $enabled (default 0)
-     **/
-    public static function showAdvanceDateRestrictionSwitch($enabled = 0)
-    {
-        /** @var array $CFG_GLPI */
-        global $CFG_GLPI;
-
-        $rand = mt_rand();
-        $url  = $CFG_GLPI["root_doc"] . "/ajax/ldapdaterestriction.php";
-        echo "<script type='text/javascript' >";
-        echo "function activateRestriction() {";
-         $params = ['enabled' => 1];
-         Ajax::updateItemJsCode('date_restriction', $url, $params);
-        echo "};";
-
-        echo "function deactivateRestriction() {";
-         $params = ['enabled' => 0];
-         Ajax::updateItemJsCode('date_restriction', $url, $params);
-        echo "};";
-        echo "</script>";
-
-        echo "</table>";
-        echo "<span id='date_restriction'>";
-        $_POST['enabled'] = $enabled;
-        include(GLPI_ROOT . "/ajax/ldapdaterestriction.php");
-        echo "</span>";
-        return $rand;
-    }
-
 
     /**
      * Dropdown of values in an array

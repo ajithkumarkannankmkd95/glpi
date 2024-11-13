@@ -791,10 +791,27 @@ class User extends CommonDBTM
         parent::unsetUndisclosedFields($fields);
 
         if (
-            !array_key_exists('id', $fields)
-            || !(new self())->currentUserHaveMoreRightThan($fields['id'])
+            array_key_exists('password_forget_token', $fields)
+            || array_key_exists('password_forget_token_date', $fields)
         ) {
-            unset($fields['password_forget_token'], $fields['password_forget_token_date']);
+            if (array_key_exists('id', $fields)) {
+                // `id` is present mainly when the whole object is fetched.
+                // In this case, we must show the token only if the user is allowed to read it.
+                $user = new self();
+                $can_see_token = Session::getLoginUserID() === $fields['id']
+                    || (
+                        $user->can($fields['id'], UPDATE)
+                        && $user->currentUserHaveMoreRightThan($fields['id'])
+                    );
+            } else {
+                // `id` may be missing when a partial object is fetch.
+                // In this case, we cannot ensure that the user is allowed to read the token
+                // and we must NOT show it.
+                $can_see_token = false;
+            }
+            if (!$can_see_token) {
+                unset($fields['password_forget_token'], $fields['password_forget_token_date']);
+            }
         }
     }
 
@@ -1114,29 +1131,35 @@ class User extends CommonDBTM
             unset($input["password"]);
         }
 
-        // prevent changing tokens and emails from users with lower rights
-        $protected_input_keys = [
-            'api_token',
-            '_reset_api_token',
-            'cookie_token',
-            'password_forget_token',
-            'personal_token',
-            '_reset_personal_token',
-
-            '_useremails',
-        ];
-        if (!isCommandLine()) {
-            // Disallow `_emails` input unless on CLI context (e.g. LDAP sync command).
-            $protected_input_keys[] = '_emails';
-        }
         if (
-            count(array_intersect($protected_input_keys, array_keys($input))) > 0
-            && !Session::isCron() // cron context is considered safe
-            && (int) $input['id'] !== Session::getLoginUserID()
-            && !$this->currentUserHaveMoreRightThan($input['id'])
+            Session::getLoginUserID() !== false
+            && ((int) $input['id']) !== Session::getLoginUserID()
         ) {
-            foreach ($protected_input_keys as $input_key) {
-                unset($input[$input_key]);
+            // Security checks to prevent an unathorized user to update sensitive fields of another user.
+            // These checks are done only if a "user" session is active.
+            $protected_input_keys = [
+                // Security tokens
+                'api_token',
+                '_reset_api_token',
+                'cookie_token',
+                'password_forget_token',
+                'personal_token',
+                '_reset_personal_token',
+
+                // Prevent changing emails that could then be used to get the password reset token
+                '_useremails',
+                '_emails',
+
+                // Prevent disabling another user account
+                'is_active',
+            ];
+            if (
+                count(array_intersect($protected_input_keys, array_keys($input))) > 0
+                && !$this->currentUserHaveMoreRightThan($input['id'])
+            ) {
+                foreach ($protected_input_keys as $input_key) {
+                    unset($input[$input_key]);
+                }
             }
         }
 
@@ -1174,12 +1197,15 @@ class User extends CommonDBTM
         }
 
        // Security on default entity  update
-        if (
-            isset($input['entities_id'])
-            && ($input['entities_id'] > 0)
-            && (!in_array($input['entities_id'], Profile_User::getUserEntities($input['id'])))
-        ) {
-            unset($input['entities_id']);
+        if (isset($input['entities_id'])) {
+            if (
+                ($input['entities_id'] > 0)
+                && (!in_array($input['entities_id'], Profile_User::getUserEntities($input['id'])))
+            ) {
+                unset($input['entities_id']);
+            } elseif ($input['entities_id'] == -1) {
+                $input['entities_id'] = 'NULL';
+            }
         }
 
        // Security on default group  update
@@ -2701,7 +2727,7 @@ HTML;
            //display login field for new records, or if this is not external auth
             echo "<td><input name='name' id='name' value=\"" . htmlescape($this->fields["name"]) . "\" class='form-control'></td>";
         } else {
-            echo "<td class='b'>" . $this->fields["name"];
+            echo "<td class='b'>" . htmlescape($this->fields["name"]);
             echo "<input type='hidden' name='name' value=\"" . htmlescape($this->fields["name"]) . "\" class='form-control'></td>";
         }
 
@@ -2742,7 +2768,7 @@ HTML;
                 if (empty($this->fields['sync_field'])) {
                     echo Dropdown::EMPTY_VALUE;
                 } else {
-                    echo $this->fields['sync_field'];
+                    echo htmlescape($this->fields['sync_field']);
                 }
             }
             echo "</td></tr>";
@@ -2896,7 +2922,7 @@ JAVASCRIPT;
         if (!empty($ID)) {
             if (Session::haveRight(self::$rightname, self::READAUTHENT)) {
                 echo "<td>" . __s('Authentication') . "</td><td>";
-                echo Auth::getMethodName($this->fields["authtype"], $this->fields["auths_id"]);
+                echo htmlescape(Auth::getMethodName($this->fields["authtype"], $this->fields["auths_id"]));
                 if (!empty($this->fields["date_sync"])) {
                     //TRANS: %s is the date of last sync
                     echo '<br>' . sprintf(
@@ -3002,7 +3028,7 @@ JAVASCRIPT;
 
         if (empty($ID)) {
             echo "<tr class='tab_bg_1'>";
-            echo "<th colspan='2'>" . _n('Authorization', 'Authorizations', 1) . "</th>";
+            echo "<th colspan='2'>" . _sn('Authorization', 'Authorizations', 1) . "</th>";
             $recurrand = mt_rand();
             echo "<td><label for='dropdown__is_recursive$recurrand'>" .  __s('Recursive') . "</label></td><td>";
             Dropdown::showYesNo("_is_recursive", 0, -1, ['rand' => $recurrand]);
@@ -3048,14 +3074,12 @@ JAVASCRIPT;
                 $entrand = mt_rand();
                 echo "</td><td><label for='dropdown_entities_id$entrand'>" .  __s('Default entity') . "</label></td><td>";
                 $entities = $this->getEntities();
-                $toadd = [];
-                if (!in_array(0, $entities)) {
-                    $toadd = [0 => __('Full structure')];
-                }
-                Entity::dropdown(['value'  => $this->fields["entities_id"],
+                $toadd = [-1 => __('Full structure')];
+                Entity::dropdown([
+                    'value'  => ($this->fields['entities_id'] === null) ? -1 : $this->fields['entities_id'],
                     'rand'   => $entrand,
                     'entity' => $entities,
-                    'toadd' => $toadd,
+                    'toadd'  => $toadd,
                 ]);
                 echo "</td></tr>";
 
@@ -3107,7 +3131,7 @@ JAVASCRIPT;
                         'value' => $this->fields['nickname']
                     ]);
                 } else {
-                    echo $this->fields['nickname'];
+                    echo htmlescape($this->fields['nickname']);
                 }
                 echo "</td>";
                 echo "</tr>";
@@ -3128,21 +3152,21 @@ JAVASCRIPT;
                      echo "</div>";
                      echo "(" . sprintf(
                          __s('generated on %s'),
-                         Html::convDateTime($this->fields["api_token_date"])
+                         htmlescape(Html::convDateTime($this->fields["api_token_date"]))
                      ) . ")";
                 }
                 echo "</td><td>";
                 Html::showCheckbox(['name'  => '_reset_api_token',
                     'title' => __('Regenerate')
                 ]);
-                echo "&nbsp;&nbsp;" . __('Regenerate');
+                echo "&nbsp;&nbsp;" . __s('Regenerate');
                 echo "</td></tr>";
             }
 
             echo "<tr class='tab_bg_1'>";
             echo "<td colspan='2' class='center'>";
             if ($this->fields["last_login"]) {
-                printf(__('Last login on %s'), Html::convDateTime($this->fields["last_login"]));
+                printf(__s('Last login on %s'), htmlescape(Html::convDateTime($this->fields["last_login"])));
             }
             echo "</td><td colspan='2'class='center'>";
 
@@ -3434,14 +3458,12 @@ JAVASCRIPT;
             if (count($_SESSION['glpiactiveentities']) > 1) {
                 $entrand = mt_rand();
                 echo "<td><label for='dropdown_entities_id$entrand'>" . __s('Default entity') . "</td><td>";
-                $toadd = [];
-                if (!in_array(0, $entities)) {
-                    $toadd = [0 => __('Full structure')];
-                }
-                Entity::dropdown(['value'  => $this->fields['entities_id'],
+                $toadd = [-1 => __('Full structure')];
+                Entity::dropdown([
+                    'value'  => ($this->fields['entities_id'] === null) ? -1 : $this->fields['entities_id'],
                     'rand'   => $entrand,
                     'entity' => $entities,
-                    'toadd' => $toadd,
+                    'toadd'  => $toadd,
                 ]);
             } else {
                 echo "<td colspan='2'>&nbsp;";
@@ -3454,7 +3476,7 @@ JAVASCRIPT;
                 $extauth
                 && isset($authtype['registration_number_field']) && !empty($authtype['registration_number_field'])
             ) {
-                echo $this->fields["registration_number"];
+                echo htmlescape($this->fields["registration_number"]);
             } else {
                 echo Html::input(
                     'registration_number',
@@ -4962,7 +4984,7 @@ JAVASCRIPT;
         }
 
         echo "<div class='center'>\n";
-        echo "<form method='post' action='" . Toolbox::getItemTypeFormURL('User') . "'>\n";
+        echo "<form method='post' action='" . htmlescape(self::getFormURL()) . "'>\n";
 
         echo "<table class='tab_cadre'>\n";
         echo "<tr><th colspan='4'>" . __s('Automatically add a user of an external source') . "</th></tr>\n";
@@ -5802,6 +5824,10 @@ JAVASCRIPT;
             ]
         ];
 
+        // Randomly increase the response time to prevent an attacker to be able to detect whether
+        // a notification was sent (a longer response time could correspond to a SMTP operation).
+        sleep(rand(1, 3));
+
         // Try to find a single user matching the given email
         if (!$this->getFromDBbyEmail($email, $condition)) {
             $count = self::countUsersByEmail($email, $condition);
@@ -5816,7 +5842,7 @@ JAVASCRIPT;
         // Check that the configuration allow this user to change his password
         if ($this->fields["authtype"] !== Auth::DB_GLPI && Auth::useAuthExt()) {
             trigger_error(
-                __("The authentication method configuration doesn't allow the user '$email' to change their password."),
+                "The authentication method configuration doesn't allow the user '$email' to change their password.",
                 E_USER_WARNING
             );
 
