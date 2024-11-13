@@ -33,6 +33,8 @@
  * ---------------------------------------------------------------------
  */
 
+use Glpi\Event;
+
 /**
  * Common DataBase visibility for items
  */
@@ -71,6 +73,58 @@ abstract class CommonDBVisible extends CommonDBTM
      * @var array
      */
     protected $users = [];
+
+    /**
+     * Class defining relation to $users
+     * @var string
+     */
+    protected $userClass;
+
+    /**
+     * Class defining relation to $profiles
+     * @var string
+     */
+    protected $profileClass;
+
+    /**
+     * Class defining relation to $groups
+     * @var string
+     */
+    protected $groupClass;
+
+    /**
+     * Class defining relation to entities
+     * @var string
+     */
+    protected $entityClass;
+
+    /**
+     * Service for visibility target log
+     * @var string
+     */
+    protected $service;
+
+    public function __construct()
+    {
+        // define default values
+        if (!$this->userClass) {
+            $this->userClass = $this->getType() . '_User';
+        }
+        if (!$this->groupClass) {
+            $this->groupClass = 'Group_' . $this->getType();
+        }
+        if (!$this->entityClass) {
+            $this->entityClass = 'Entity_' . $this->getType();
+        }
+        if (!$this->profileClass) {
+            $this->profileClass = 'Profile_' . $this->getType();
+        }
+        if (!$this->service) {
+            $this->service =  'tools';
+        }
+
+        parent::__construct();
+    }
 
     public function __get(string $property)
     {
@@ -474,5 +528,40 @@ abstract class CommonDBVisible extends CommonDBTM
             $params['is_recursive'] = $this->fields['is_recursive'];
         }
         return $params;
+    }
+
+    /**
+     * Add a visibility target to the item
+     * @param array $inputs key '_type' determine the type of target
+     * @return void
+     */
+    public function addVisibility(array $inputs) {
+        $fkField = getForeignKeyFieldForItemType($this->getType());
+        $item = null;
+        switch ($inputs['_type']) {
+            case 'User':
+                $item = new $this->userClass;
+                break;
+            case 'Group':
+                $item = new $this->groupClass;
+                break;
+            case 'Entity':
+                $item = new $this->entityClass;
+                break;
+            case 'Profile':
+                $item = new $this->profileClass;
+                break;
+        }
+        if (!is_null($item)) {
+            $item->add($inputs);
+            Event::log(
+                $inputs[$fkField],
+                $this->getType(),
+                4,
+                $this->service,
+                //TRANS: %s is the user login
+                sprintf(__('%s adds a target'), $_SESSION["glpiname"])
+            );
+        }
     }
 }

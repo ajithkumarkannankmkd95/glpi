@@ -60,6 +60,11 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
     const COUNT_YES = 1;
     const COUNT_AUTO = 2;
 
+    protected $userClass = SavedSearch_UserTarget::class;
+    protected $groupClass = Group_SavedSearch::class;
+    protected $entityClass = Entity_SavedSearch::class;
+    protected $service = 'tools';
+
     public static function getForbiddenActionsForMenu()
     {
         return ['add'];
@@ -98,6 +103,7 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
 
     public static function showMassiveActionsSubForm(MassiveAction $ma)
     {
+
         switch ($ma->getAction()) {
             case 'change_count_method':
                 $values = [self::COUNT_AUTO  => __('Auto'),
@@ -213,7 +219,7 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
     public function post_addItem()
     {
         // for search saved as public, automatically create a link with its entity
-        if ($this->input['is_private']) { // TODO check condition
+        if (!$this->input['is_private']) {
             $item = new Entity_SavedSearch();
             $item->add([
                 'savedsearches_id' => $this->getID(),
@@ -392,6 +398,7 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
 
     public function prepareInputForAdd($input)
     {
+
         if (!isset($input['url']) || !isset($input['type'])) {
             return false;
         }
@@ -402,6 +409,7 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
 
     public function prepareInputForUpdate($input)
     {
+
         if (isset($input['url']) && $input['type']) {
             $input = $this->prepareSearchUrlForDB($input);
         }
@@ -410,7 +418,8 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
 
     public function pre_updateInDB()
     {
-        // Set new user if initial user have been deleted
+
+       // Set new user if initial user have been deleted
         if (
             ($this->fields['users_id'] == 0)
             && ($uid = Session::getLoginUserID())
@@ -994,7 +1003,7 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
     public function saveOrder(array $items)
     {
         if (count($items)) {
-            $user = new User();
+            $user               = new User();
             $personalorderfield = $this->getPersonalOrderField();
 
             $user->update([

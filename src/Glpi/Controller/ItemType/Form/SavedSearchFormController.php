@@ -34,7 +34,7 @@
 
 namespace Glpi\Controller\ItemType\Form;
 
-use Glpi\Controller\GenericFormController;
+use Glpi\Controller\VisibilityController;
 use Glpi\Routing\Attribute\ItemtypeFormLegacyRoute;
 use Glpi\Routing\Attribute\ItemtypeFormRoute;
 use Html;
@@ -43,7 +43,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class SavedSearchFormController extends GenericFormController
+class SavedSearchFormController extends VisibilityController
 {
     #[ItemtypeFormRoute(SavedSearch::class)]
     #[ItemtypeFormLegacyRoute(SavedSearch::class)]
