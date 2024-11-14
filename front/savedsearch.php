@@ -45,8 +45,13 @@ if (
     isset($_GET['action']) && $_GET["action"] == "load"
     && isset($_GET["id"]) && ($_GET["id"] > 0)
 ) {
-    $savedsearch->check($_GET["id"], READ);
-    $savedsearch->load($_GET["id"]);
+    $savedsearch->getFromDB($_GET['ID']);
+    if ($savedsearch->canViewItem()) {
+        $savedsearch->load($_GET["id"]);
+    } else {
+        $info = "User can not access the SavedSearch " . $_GET['id'];
+        throw new \Glpi\Exception\Http\AccessDeniedHttpException($info);
+    }
     return;
 }
 
