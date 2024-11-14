@@ -535,21 +535,22 @@ abstract class CommonDBVisible extends CommonDBTM
      * @param array $inputs key '_type' determine the type of target
      * @return void
      */
-    public function addVisibility(array $inputs) {
+    public function addVisibility(array $inputs)
+    {
         $fkField = getForeignKeyFieldForItemType($this->getType());
         $item = null;
         switch ($inputs['_type']) {
             case 'User':
-                $item = new $this->userClass;
+                $item = new $this->userClass();
                 break;
             case 'Group':
-                $item = new $this->groupClass;
+                $item = new $this->groupClass();
                 break;
             case 'Entity':
-                $item = new $this->entityClass;
+                $item = new $this->entityClass();
                 break;
             case 'Profile':
-                $item = new $this->profileClass;
+                $item = new $this->profileClass();
                 break;
         }
         if (!is_null($item)) {

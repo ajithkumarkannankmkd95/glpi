@@ -162,15 +162,6 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
         parent::processMassiveActionsForOneItemtype($ma, $item, $ids);
     }
 
-    public function haveVisibilityAccess()
-    {
-        if (!self::canView()) {
-            return false;
-        }
-
-        return parent::haveVisibilityAccess();
-    }
-
     public function canCreateItem(): bool
     {
         if (isset($this->input['is_private']) && $this->input['is_private'] == 0) {
@@ -186,6 +177,24 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
     {
         return (Session::haveRight('config', UPDATE) ||
             Session::haveRight(self::$rightname, CREATE));
+    }
+
+    public static function getMenuContent()
+    {
+        // prohibit display of the menu content if the user doesn't have the right to see public searches
+        $menu = [];
+        if (Session::haveRight(static::$rightname, READ)) {
+            $menu = parent::getMenuContent();
+        }
+        if (count($menu)) {
+            return $menu;
+        }
+        return false;
+    }
+
+    public static function canView(): bool
+    {
+        return true;
     }
 
     public function canViewItem(): bool
@@ -232,27 +241,25 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
 
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
-        if (self::canView()) {
-            $nb = 0;
-            switch ($item->getType()) {
-                case SavedSearch::class:
-                    if (self::canCreatePublic()) {
-                        if ($_SESSION['glpishow_count_on_tabs']) {
-                            $nb = $item->countVisibilities();
-                        }
-                        return [
-                            1 => self::createTabEntry(
-                                _n(
-                                    'Target',
-                                    'Targets',
-                                    Session::getPluralNumber()
-                                ),
-                                $nb
-                            )
-                        ];
+        $nb = 0;
+        switch ($item->getType()) {
+            case SavedSearch::class:
+                if (self::canCreatePublic()) {
+                    if ($_SESSION['glpishow_count_on_tabs']) {
+                        $nb = $item->countVisibilities();
                     }
-                    break;
-            }
+                    return [
+                        1 => self::createTabEntry(
+                            _n(
+                                'Target',
+                                'Targets',
+                                Session::getPluralNumber()
+                            ),
+                            $nb
+                        )
+                    ];
+                }
+                break;
         }
         return '';
     }
