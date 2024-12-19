@@ -495,8 +495,10 @@ abstract class CommonITILObject extends CommonDBTM
         if (isset($this->users[$actortype])) {
             foreach ($this->users[$actortype] as $user) {
                 $disable_anonymize = false;
-                if ($actortype == CommonITILActor::REQUESTER
-                    || $actortype == CommonITILActor::OBSERVER) {
+                if (
+                    $actortype == CommonITILActor::REQUESTER
+                    || $actortype == CommonITILActor::OBSERVER
+                ) {
                     $disable_anonymize = true;
                 }
                 $name = getUserName($user['users_id'], 0, $disable_anonymize);
