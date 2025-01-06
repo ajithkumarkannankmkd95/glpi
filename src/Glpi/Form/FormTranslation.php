@@ -177,6 +177,25 @@ final class FormTranslation extends ItemTranslation
         return true;
     }
 
+    public static function getTranslationsForForm(Form $form): array
+    {
+        return array_merge(
+            self::getTranslationsForItem($form),
+            ...array_map(
+                fn ($section) => self::getTranslationsForItem($section),
+                $form->getSections()
+            ),
+            ...array_map(
+                fn ($question) => self::getTranslationsForItem($question),
+                $form->getQuestions()
+            ),
+            ...array_map(
+                fn ($comment) => self::getTranslationsForItem($comment),
+                $form->getFormComments()
+            ),
+        );
+    }
+
     /**
      * Get remaining languages that can be added to a form translation
      *
