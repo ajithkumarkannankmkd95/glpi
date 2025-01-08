@@ -1184,10 +1184,6 @@ TWIG,
        // load log filters everywhere
         Html::requireJs('log_filters');
 
-        if (isset($_SESSION['glpihighcontrast_css']) && $_SESSION['glpihighcontrast_css']) {
-            $tpl_vars['high_contrast'] = true;
-        }
-
        // Add specific css for plugins
         if (isset($PLUGIN_HOOKS[Hooks::ADD_CSS]) && count($PLUGIN_HOOKS[Hooks::ADD_CSS])) {
             foreach ($PLUGIN_HOOKS[Hooks::ADD_CSS] as $plugin => $files) {
@@ -1725,7 +1721,8 @@ TWIG,
         }
 
         $tpl_vars = [
-            'js_files' => [],
+            'js_files'   => [],
+            'js_modules' => [],
         ];
 
        // On demand scripts
