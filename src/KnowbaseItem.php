@@ -967,7 +967,7 @@ class KnowbaseItem extends CommonDBVisible implements ExtraVisibilityCriteria
                 $downloadlink = NOT_AVAILABLE;
 
                 if ($document->getFromDB($docID)) {
-                    $downloadlink = $document->getDownloadLink();
+                    $downloadlink = $document->getDownloadLink($this);
                 }
 
                 if (!isset($heading_names[$data["documentcategories_id"]])) {
