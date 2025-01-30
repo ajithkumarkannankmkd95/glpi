@@ -219,7 +219,7 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
     public function post_addItem()
     {
         // for search saved as public, automatically create a link with its entity
-        if (!$this->input['is_private']) {
+        if (isset($this->input['is_private']) && !$this->input['is_private']) {
             $item = new Entity_SavedSearch();
             $item->add([
                 'savedsearches_id' => $this->getID(),

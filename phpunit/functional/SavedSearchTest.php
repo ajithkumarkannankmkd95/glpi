@@ -68,6 +68,8 @@ class SavedSearchTest extends DbTestCase
         $this->assertSame('', \SavedSearch::addVisibilityRestrict());
 
         $this->login('normal', 'normal');
+        // new value example :
+        // $visibility_restrict = "((`glpi_savedsearches`.`users_id` = '5') OR ((`glpi_savedsearches_usertargets`.`users_id` = '5' OR (`glpi_groups_savedsearches`.`groups_id` IN ('-1') AND ((`glpi_groups_savedsearches`.`no_entity_restriction` = '1') OR ((`glpi_groups_savedsearches`.`entities_id` IN ('0'))))) OR ((`glpi_entities_savedsearches`.`entities_id` IN ('0')))))) ";
         $this->assertSame(
             "`glpi_savedsearches`.`is_private` = '1' AND `glpi_savedsearches`.`users_id` = '5'",
             \SavedSearch::addVisibilityRestrict()
