@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2024 Teclib' and contributors.
+ * @copyright 2015-2025 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -428,7 +428,7 @@ HTML;
                 updateCurrentTab();
                 return;
             }
-            $(target).html('<i class=\"fas fa-3x fa-spinner fa-pulse position-absolute m-5 start-50\"></i>');
+            $(target).html(`<div class="d-flex justify-content-center"><span class="spinner-border spinner-border position-absolute m-5" role="status" aria-hidden="true"></span></div>`);
 
             $.get(url, function(data) {
                $(target).html(data);
@@ -451,6 +451,8 @@ HTML;
                     // unset hash (to avoid scrolling when changing tabs)
                     url_hash   = '';
                 }
+            }).fail(function(data) {
+               $(target).html(data.responseText);
             });
          };
 

@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2024 Teclib' and contributors.
+ * @copyright 2015-2025 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -91,7 +91,8 @@ final class QuestionTypeUserDevice extends AbstractQuestionType
                     'init'               : init,
                     'no_label'           : true,
                     'field_class'        : [
-                        'col-6',
+                        'col-12',
+                        'col-sm-6',
                         'devices-dropdown',
                         is_multiple_devices ? '' : 'd-none'
                     ]|join(' '),
@@ -111,7 +112,8 @@ final class QuestionTypeUserDevice extends AbstractQuestionType
                     'init'               : init,
                     'no_label'           : true,
                     'field_class'        : [
-                        'col-6',
+                        'col-12',
+                        'col-sm-6',
                         'devices-dropdown',
                         is_multiple_devices ? 'd-none' : ''
                     ]|join(' '),
@@ -185,7 +187,7 @@ TWIG;
                 '',
                 {
                     'no_label'           : true,
-                    'field_class'        : 'col-6',
+                    'field_class'        : 'col-12 col-sm-6',
                     'display_emptychoice': true,
                     'multiple'           : is_multiple_devices,
                     'aria_label'         : aria_label,

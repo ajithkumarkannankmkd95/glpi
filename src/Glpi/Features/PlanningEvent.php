@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2024 Teclib' and contributors.
+ * @copyright 2015-2025 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -383,7 +383,6 @@ trait PlanningEvent
      *    - color
      *    - event_type_color
      *    - check_planned (boolean)
-     *    - display_done_events (boolean)
      *
      * @return array of planning item
      **/
@@ -400,7 +399,7 @@ trait PlanningEvent
             'color'               => '',
             'event_type_color'    => '',
             'check_planned'       => false,
-            'display_done_events' => true,
+            'state_done'          => true,
         ];
         $options = array_merge($default_options, $options);
 
@@ -509,13 +508,13 @@ trait PlanningEvent
             $WHERE['state'] = ['!=', Planning::INFO];
         }
 
-        if (!$options['display_done_events']) {
+        if (!$options['state_done']) {
             $WHERE[] = [
                 'OR' => [
-                    'state'  => Planning::TODO,
-                    'AND'    => [
-                        'state'  => Planning::INFO,
-                        'end'    => ['>', QueryFunction::now()]
+                    'state' => Planning::TODO,
+                    [
+                        'state' => Planning::INFO,
+                        'end' => ['>', QueryFunction::now()]
                     ]
                 ]
             ];

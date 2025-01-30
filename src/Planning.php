@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2024 Teclib' and contributors.
+ * @copyright 2015-2025 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -34,8 +34,6 @@
  */
 
 use Glpi\Application\View\TemplateRenderer;
-use Glpi\DBAL\QueryExpression;
-use Glpi\Application\ErrorHandler;
 use Glpi\DBAL\QueryFunction;
 use Glpi\RichText\RichText;
 use RRule\RRule;
@@ -114,7 +112,7 @@ class Planning extends CommonGLPI
 
         if (self::canView()) {
             $title     = htmlescape(self::getTypeName(Session::getPluralNumber()));
-            $planning  = "<i class='fa far fa-calendar-alt pointer' title='$title'>
+            $planning  = "<i class='ti ti-calendar pointer' title='$title'>
                         <span class='sr-only'>$title</span>
                        </i>";
 
@@ -123,7 +121,7 @@ class Planning extends CommonGLPI
 
         if (PlanningExternalEvent::canView()) {
             $ext_title = htmlescape(PlanningExternalEvent::getTypeName(Session::getPluralNumber()));
-            $external  = "<i class='fa fas fa-calendar-week pointer' title='$ext_title'>
+            $external  = "<i class='ti ti-calendar-week pointer' title='$ext_title'>
                         <span class='sr-only'>$ext_title</span>
                        </i>";
 
@@ -132,7 +130,7 @@ class Planning extends CommonGLPI
 
         if ($_SESSION['glpi_use_mode'] === Session::DEBUG_MODE) {
             $caldav_title = __s('CalDAV browser interface');
-            $caldav  = "<i class='fa fas fa-sync pointer' title='$caldav_title'>
+            $caldav  = "<i class='ti ti-refresh pointer' title='$caldav_title'>
                         <span class='sr-only'>$caldav_title</span>
                        </i>";
 
@@ -642,7 +640,7 @@ TWIG, ['options' => $options]);
 
         return array_merge(
             $CFG_GLPI['planning_types'],
-            ['NotPlanned', 'OnlyBgEvents']
+            ['NotPlanned', 'OnlyBgEvents', 'StateDone']
         );
     }
 
@@ -674,7 +672,7 @@ TWIG, ['options' => $options]);
         $filters = &$_SESSION['glpi_plannings']['filters'];
         $index_color = 0;
         foreach (self::getPlanningTypes() as $planning_type) {
-            if (in_array($planning_type, ['NotPlanned', 'OnlyBgEvents']) || $planning_type::canView()) {
+            if (in_array($planning_type, ['NotPlanned', 'OnlyBgEvents', 'StateDone']) || $planning_type::canView()) {
                 if (!isset($filters[$planning_type])) {
                     $filters[$planning_type] = [
                         'color'   => self::getPaletteColor('ev', $index_color),
@@ -789,6 +787,8 @@ TWIG, ['options' => $options]);
                 $title = __('Not planned tasks');
             } else if ($filter_key === 'OnlyBgEvents') {
                 $title = __('Only background events');
+            } else if ($filter_key === 'StateDone') {
+                $title = __('Done elements');
             } else {
                 if (!getItemForItemtype($filter_key)) {
                     return;
@@ -1354,7 +1354,7 @@ TWIG, $twig_params);
         if (count($append_params) > 1) {
             $rand = mt_rand();
             echo "<a href='#' title=\"" . __s('Availability') . "\" data-bs-toggle='modal' data-bs-target='#planningcheck$rand'>";
-            echo "<i class='far fa-calendar-alt'></i>";
+            echo "<i class='ti ti-calendar'></i>";
             echo "<span class='sr-only'>" . __s('Availability') . "</span>";
             echo "</a>";
             Ajax::createIframeModalWindow(
@@ -1547,7 +1547,6 @@ TWIG, $twig_params);
      *       (should be an ISO_8601 date, but could be anything wo can be parsed by strtotime)
      *  - end: mandatory, planning end.
      *       (should be an ISO_8601 date, but could be anything wo can be parsed by strtotime)
-     *  - display_done_events: default true, show also events tagged as done
      *  - force_all_events: even if the range is big, don't reduce the returned set
      * @return array $events : array with events in fullcalendar.io format
      */
@@ -1559,8 +1558,8 @@ TWIG, $twig_params);
         $param['start']               = '';
         $param['end']                 = '';
         $param['view_name']           = '';
-        $param['display_done_events'] = true;
         $param['force_all_events']    = false;
+        $param['state_done']          = true;
 
         if (is_array($options) && count($options)) {
             foreach ($options as $key => $val) {
@@ -1586,6 +1585,10 @@ TWIG, $twig_params);
 
         $param['begin'] = date("Y-m-d H:i:s", $time_begin);
         $param['end']   = date("Y-m-d H:i:s", $time_end);
+
+        if (!$_SESSION['glpi_plannings']['filters']['StateDone']['display']) {
+            $param['state_done'] = false;
+        }
 
         $raw_events = [];
         $not_planned = [];
@@ -1645,7 +1648,7 @@ TWIG, $twig_params);
             $begin = $event['begin'];
             $end   = $event['end'];
 
-            // retreive all day events
+            // retrieve all day events
             if (
                 strpos($event['begin'], "00:00:00")
                 && (strtotime($event['end']) - strtotime($event['begin'])) % DAY_TIMESTAMP === 0
@@ -1691,6 +1694,11 @@ TWIG, $twig_params);
                 'priority'    => $event['priority'] ?? "",
                 'state'       => $event['state'] ?? "",
             ];
+
+            // if duration is full day and start is midnight, force allDay to true
+            if (date('H:i:s', strtotime($begin)) === '00:00:00' && (int) $ms_duration % (DAY_TIMESTAMP * 1000) === 0) {
+                $new_event['allDay'] = true;
+            }
 
             // if we can't update the event, pass the editable key
             if (!$event['editable']) {
@@ -1740,7 +1748,7 @@ TWIG, $twig_params);
                     )
                 );
                 $new_event = array_merge($new_event, [
-                    'icon'     => 'fas fa-history',
+                    'icon'     => 'ti ti-history',
                     'icon_alt' => $hr_rrule_o->humanReadable(),
                 ]);
 
@@ -1875,8 +1883,6 @@ TWIG, $twig_params);
      */
     private static function getExternalCalendarRawEvents(string $limit_begin, string $limit_end): array
     {
-        ErrorHandler::getInstance()->suspendOutput(); // Suspend error output to prevent warnings to corrupt JSON output
-
         $raw_events = [];
 
         foreach ($_SESSION['glpi_plannings']['plannings'] as $planning_id => $planning_params) {
@@ -1948,8 +1954,6 @@ TWIG, $twig_params);
                 ];
             }
         }
-
-        ErrorHandler::getInstance()->unsuspendOutput(); // Restore error output state
 
         return $raw_events;
     }

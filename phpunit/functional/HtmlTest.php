@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2024 Teclib' and contributors.
+ * @copyright 2015-2025 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -70,7 +70,7 @@ class HtmlTest extends \GLPITestCase
 
         $expected_error = 'Failed to parse time string (not a date) at position 0 (n): The timezone could not be found in the database';
         $this->assertSame('not a date', \Html::convDate('not a date', 2));
-        $this->hasPhpLogRecordThatContains($expected_error, LogLevel::CRITICAL);
+        $this->hasPhpLogRecordThatContains($expected_error, LogLevel::ERROR);
     }
 
     public function testConvDateTime()
@@ -282,6 +282,7 @@ class HtmlTest extends \GLPITestCase
 
         $expected = [
             'Ticket',
+            'Glpi\Form\ServiceCatalog\ServiceCatalog',
             'Problem',
             'Change',
             'Planning',

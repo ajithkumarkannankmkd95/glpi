@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2024 Teclib' and contributors.
+ * @copyright 2015-2025 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -36,6 +36,7 @@
 namespace Glpi\Asset\Capacity;
 
 use Item_Rack;
+use Override;
 use Rack;
 use Session;
 
@@ -49,6 +50,12 @@ class IsRackableCapacity extends AbstractCapacity
     public function getIcon(): string
     {
         return Rack::getIcon();
+    }
+
+    #[Override]
+    public function getDescription(): string
+    {
+        return __("Can be inserted in a datacenter rack");
     }
 
     public function getSearchOptions(string $classname): array

@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2024 Teclib' and contributors.
+ * @copyright 2015-2025 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -1003,6 +1003,8 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
      **/
     public static function rawSearchOptionsToAdd($itemtype = null)
     {
+        /** @var \DBmysql $DB */
+        global $DB;
 
         $task = new static();
         $tab = [];
@@ -1182,6 +1184,22 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
         ];
 
         $tab[] = [
+            'id'                 => '73',
+            'table'              => static::getTable(),
+            'field'              => 'date',
+            'name'               => _n('Latest date', 'Latest dates', 1),
+            'datatype'           => 'datetime',
+            'massiveaction'      => false,
+            'forcegroupby'       => true,
+            'joinparams'         => [
+                'jointype'           => 'child',
+                'condition'          => $task_condition
+            ],
+            'computation'        => QueryFunction::max('TABLE.date'),
+            'nometa'             => true // cannot GROUP_CONCAT a MAX
+        ];
+
+        $tab[] = [
             'id'                 => '33',
             'table'              => static::getTable(),
             'field'              => 'state',
@@ -1275,7 +1293,6 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
      *    - end                Date
      *    - color
      *    - event_type_color
-     *    - display_done_events (boolean)
      *
      * @return array of planning item
      **/
@@ -1317,7 +1334,7 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
             'genical'             => false,
             'color'               => '',
             'event_type_color'    => '',
-            'display_done_events' => true,
+            'state_done'          => true,
         ];
         $options = array_merge($default_options, $options);
 
@@ -1357,6 +1374,30 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
                 $item->getTable() . '.begin'   => ['<=', $end]
             ];
         }
+
+        if (!$options['state_done']) {
+            $WHERE[] = [
+                'OR' => [
+                    $item->getTable() . ".state" => Planning::TODO,
+                    [
+                        'AND' => [
+                            $item->getTable() . '.state' => Planning::INFO,
+                            $item->getTable() . '.end' => ['>', QueryFunction::now()]
+                        ]
+                    ]
+                ]
+            ];
+
+            $WHERE[] = [
+                'NOT' => [
+                    $parentitem->getTable() . '.status' => array_merge(
+                        $parentitem->getSolvedStatusArray(),
+                        $parentitem->getClosedStatusArray()
+                    )
+                ]
+            ];
+        }
+
         $ADDWHERE = [];
 
         if ($whogroup === "mine") {
@@ -1401,31 +1442,8 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
             $WHERE[] = ['OR' => $ADDWHERE];
         }
 
-        if (!$options['display_done_events']) {
-            $WHERE[] = ['OR' => [
-                $item->getTable() . ".state"  => Planning::TODO,
-                [
-                    'AND' => [
-                        $item->getTable() . '.state'  => Planning::INFO,
-                        $item->getTable() . '.end'    => ['>', QueryFunction::now()]
-                    ]
-                ]
-            ]
-            ];
-        }
-
         if ($parentitem->maybeDeleted()) {
             $WHERE[$parentitem->getTable() . '.is_deleted'] = 0;
-        }
-
-        if (!$options['display_done_events']) {
-            $WHERE[] = ['NOT' => [
-                $parentitem->getTable() . '.status' => array_merge(
-                    $parentitem->getSolvedStatusArray(),
-                    $parentitem->getClosedStatusArray()
-                )
-            ]
-            ];
         }
 
         $iterator = $DB->request([
@@ -1547,7 +1565,6 @@ abstract class CommonITILTask extends CommonDBTM implements CalDAVCompatibleItem
      *    - end                Date
      *    - color
      *    - event_type_color
-     *    - display_done_events (boolean)
      *
      * @return array of planning item
      **/

@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2024 Teclib' and contributors.
+ * @copyright 2015-2025 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -670,14 +670,14 @@ TWIG, $twig_params);
         ]);
 
         if ($ok && Session::haveRight("reservation", self::RESERVEANITEM)) {
-            echo "<i class='fas fa-level-up-alt fa-flip-horizontal fa-lg mx-2'></i>";
+            echo "<i class='fas fa-level-up-alt fa-flip-horizontal fs-2 mx-2'></i>";
             echo "<th colspan='" . ($showentity ? "5" : "4") . "'>";
             if (isset($_POST['reserve'])) {
                 echo Html::hidden('begin', ['value' => $_POST['reserve']["begin"]]);
                 echo Html::hidden('end', ['value'   => $_POST['reserve']["end"]]);
             }
             echo Html::submit(_x('button', 'Book'), [
-                'icon'  => 'fas fa-lg fa-calendar-plus',
+                'icon'  => 'fas fs-2 fa-calendar-plus',
             ]);
         }
 

@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2024 Teclib' and contributors.
+ * @copyright 2015-2025 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -38,6 +38,7 @@ namespace Glpi\Asset\Capacity;
 use CommonGLPI;
 use Glpi\Asset\Asset;
 use Notepad;
+use Override;
 use ReflectionClass;
 use Session;
 
@@ -51,6 +52,12 @@ class HasNotepadCapacity extends AbstractCapacity
     public function getIcon(): string
     {
         return Notepad::getIcon();
+    }
+
+    #[Override]
+    public function getDescription(): string
+    {
+        return __("Enable a simple notepad");
     }
 
     public function getSearchOptions(string $classname): array

@@ -5,7 +5,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2024 Teclib' and contributors.
+ * @copyright 2015-2025 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -455,13 +455,8 @@ var GLPIPlanning  = {
                     var view_name = GLPIPlanning.calendar
                         ? GLPIPlanning.calendar.state.viewType
                         : options.default_view;
-                    var display_done_events = 1;
-                    if (view_name.indexOf('list') >= 0) {
-                        display_done_events = 0;
-                    }
                     return {
                         'action': 'get_events',
-                        'display_done_events': display_done_events,
                         'view_name': view_name
                     };
                 },

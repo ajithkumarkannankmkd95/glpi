@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2024 Teclib' and contributors.
+ * @copyright 2015-2025 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -38,6 +38,7 @@ namespace Glpi\Asset\Capacity;
 use CommonGLPI;
 use Contract;
 use Contract_Item;
+use Override;
 
 class HasContractsCapacity extends AbstractCapacity
 {
@@ -50,6 +51,12 @@ class HasContractsCapacity extends AbstractCapacity
     public function getIcon(): string
     {
         return Contract::getIcon();
+    }
+
+    #[Override]
+    public function getDescription(): string
+    {
+        return __("Link contracts to the assets for costs, renewal and supplier tracking");
     }
 
     public function getCloneRelations(): array

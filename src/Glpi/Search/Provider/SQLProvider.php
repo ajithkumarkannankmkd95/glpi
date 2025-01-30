@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2024 Teclib' and contributors.
+ * @copyright 2015-2025 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -665,26 +665,52 @@ final class SQLProvider implements SearchProviderInterface
                 break;
 
             case 'ProjectTask':
-                $teamtable  = 'glpi_projecttaskteams';
-                $group_criteria = [];
-                if (count($_SESSION['glpigroups'])) {
-                    $group_criteria = [
-                        "$teamtable.itemtype" => Group::class,
-                        "$teamtable.items_id" => $_SESSION['glpigroups']
+                if (!Session::haveRightsOr('project', [\Project::READALL, \Project::READMY])) {
+                    // Can only see the tasks assigned to the user or one of his groups
+                    $teamtable = 'glpi_projecttaskteams';
+                    $group_criteria = [];
+                    if (count($_SESSION['glpigroups'])) {
+                        $group_criteria = [
+                            "$teamtable.itemtype" => Group::class,
+                            "$teamtable.items_id" => $_SESSION['glpigroups']
+                        ];
+                    }
+                    $user_criteria = [
+                        "$teamtable.itemtype" => User::class,
+                        "$teamtable.items_id" => Session::getLoginUserID()
                     ];
-                }
-                $user_criteria = [
-                    "$teamtable.itemtype" => User::class,
-                    "$teamtable.items_id" => Session::getLoginUserID()
-                ];
-                $criteria = [
-                    "glpi_projects.is_template" => 0,
-                    'OR' => [
-                        $user_criteria
-                    ]
-                ];
-                if (!empty($group_criteria)) {
-                    $criteria['OR'][] = $group_criteria;
+                    $criteria = [
+                        "glpi_projects.is_template" => 0,
+                        'OR' => [
+                            $user_criteria
+                        ]
+                    ];
+                    if (!empty($group_criteria)) {
+                        $criteria['OR'][] = $group_criteria;
+                    }
+                } else if (Session::haveRight('project', \Project::READMY)) {
+                    // User must be the manager, in the manager group or in the project team
+                    $teamtable = 'glpi_projectteams';
+                    $group_criteria = [];
+                    if (count($_SESSION['glpigroups'])) {
+                        $group_criteria = [
+                            "$teamtable.itemtype" => Group::class,
+                            "$teamtable.items_id" => $_SESSION['glpigroups']
+                        ];
+                    }
+                    $user_criteria = [
+                        "$teamtable.itemtype" => User::class,
+                        "$teamtable.items_id" => Session::getLoginUserID()
+                    ];
+                    $criteria = [
+                        'OR' => [
+                            $user_criteria,
+                            'glpi_projects.users_id' => Session::getLoginUserID()
+                        ]
+                    ];
+                    if (!empty($group_criteria)) {
+                        $criteria['OR'][] = $group_criteria;
+                    }
                 }
                 break;
 
@@ -1986,6 +2012,16 @@ final class SQLProvider implements SearchProviderInterface
                     $already_link_tables,
                     "glpi_projecttaskteams",
                     "projecttaskteams_id",
+                    0,
+                    0,
+                    ['jointype' => 'child']
+                ));
+                $out = array_merge_recursive($out, self::getLeftJoinCriteria(
+                    $itemtype,
+                    'glpi_projects',
+                    $already_link_tables,
+                    "glpi_projectteams",
+                    "projectteams_id",
                     0,
                     0,
                     ['jointype' => 'child']
@@ -4396,20 +4432,20 @@ final class SQLProvider implements SearchProviderInterface
                 if (isset($criterion['link'])) {
                     switch ($criterion['link']) {
                         case "AND":
-                            $LINK       = " OR ";
+                            $LINK       = ($criterion['searchtype'] == 'notcontains') ? ' AND ' : ' OR ';
                             $globallink = " AND ";
                             break;
                         case "AND NOT":
-                            $LINK       = " AND ";
+                            $LINK       = ($criterion['searchtype'] == 'notcontains') ? ' OR ' : ' AND ';
                             $NOT        = 1;
                             $globallink = " AND ";
                             break;
                         case "OR":
-                            $LINK       = " OR ";
+                            $LINK       = ($criterion['searchtype'] == 'notcontains') ? ' AND ' : ' OR ';
                             $globallink = " OR ";
                             break;
                         case "OR NOT":
-                            $LINK       = " AND ";
+                            $LINK       = ($criterion['searchtype'] == 'notcontains') ? ' OR ' : ' AND ';
                             $NOT        = 1;
                             $globallink = " OR ";
                             break;
@@ -4435,6 +4471,12 @@ final class SQLProvider implements SearchProviderInterface
                     if (isset($val2['nosearch']) && $val2['nosearch']) {
                         continue;
                     }
+                    if (!preg_match(QueryBuilder::getInputValidationPattern($val2['datatype'] ?? '')['pattern'], $criterion['value'])) {
+                        // Do not add a clause on the current field if the searched term does not match the exepected pattern.
+                        // For instance, do not filter on date fields if the searched value is a word.
+                        continue;
+                    }
+
                     if (is_array($val2)) {
                         // Add Where clause if not to be done in HAVING CLAUSE
                         if (!$is_having && !isset($val2["usehaving"])) {
@@ -5905,7 +5947,7 @@ final class SQLProvider implements SearchProviderInterface
                     if ($data[$ID][0]['is_active']) {
                         return "<a href='reservation.php?reservationitems_id=" .
                             $data["refID"] . "' title=\"" . __s('See planning') . "\">" .
-                            "<i class='far fa-calendar-alt'></i><span class='sr-only'>" . __('See planning') . "</span></a>";
+                            "<i class='ti ti-calendar'></i><span class='sr-only'>" . __('See planning') . "</span></a>";
                     } else {
                         return '';
                     }
@@ -5967,21 +6009,21 @@ final class SQLProvider implements SearchProviderInterface
                         ],
                     ]);
                     $name = $data[$ID][0]['name'];
-                    $fa_class = "";
-                    $fa_title = "";
+                    $icon_class = "";
+                    $icon_title = "";
                     $href = \KnowbaseItem::getFormURLWithID($data[$ID][0]['id']);
                     if (count($result) > 0) {
                         foreach ($result as $row) {
                             if ($row['is_faq']) {
-                                $fa_class = "fa-question-circle faq";
-                                $fa_title = __s("This item is part of the FAQ");
+                                $icon_class = "ti ti-help faq";
+                                $icon_title = __s("This item is part of the FAQ");
                             }
                         }
                     } else {
-                        $fa_class = "fa-eye-slash not-published";
-                        $fa_title = __s("This item is not published yet");
+                        $icon_class = "ti ti-eye-off not-published";
+                        $icon_title = __s("This item is not published yet");
                     }
-                    return "<div class='kb'> <i class='fa fa-fw $fa_class' title='$fa_title'></i> <a href='$href'>" . \htmlescape($name) . "</a></div>";
+                    return "<div class='kb'> <i class='$icon_class' title='$icon_title'></i> <a href='$href'>" . \htmlescape($name) . "</a></div>";
             }
         }
 

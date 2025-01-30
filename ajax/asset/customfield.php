@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2024 Teclib' and contributors.
+ * @copyright 2015-2025 Teclib' and contributors.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
  * ---------------------------------------------------------------------
@@ -53,6 +53,9 @@ if (isset($_POST['action'])) {
         foreach ($field_options as $option) {
             echo $option->getFormInput();
         }
+    } else if ($_POST['action'] === 'purge_field') {
+        $field->check($_POST['customfielddefinitions_id'], PURGE);
+        $field->delete(['id' => $_POST['customfielddefinitions_id']]);
     } else {
         throw new BadRequestHttpException();
     }

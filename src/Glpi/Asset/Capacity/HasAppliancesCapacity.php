@@ -7,7 +7,7 @@
  *
  * http://glpi-project.org
  *
- * @copyright 2015-2024 Teclib' and contributors.
+ * @copyright 2015-2025 Teclib' and contributors.
  * @copyright 2003-2014 by the INDEPNET Development Team.
  * @licence   https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -38,6 +38,7 @@ namespace Glpi\Asset\Capacity;
 use Appliance;
 use Appliance_Item;
 use CommonGLPI;
+use Override;
 use Session;
 
 class HasAppliancesCapacity extends AbstractCapacity
@@ -50,6 +51,19 @@ class HasAppliancesCapacity extends AbstractCapacity
     public function getIcon(): string
     {
         return Appliance::getIcon();
+    }
+
+    #[Override]
+    public function getDescription(): string
+    {
+        return __("Can be part of an appliance. An appliance is a virtual object that groups several assets");
+    }
+
+    public function getCloneRelations(): array
+    {
+        return [
+            Appliance_Item::class,
+        ];
     }
 
     public function isUsed(string $classname): bool
