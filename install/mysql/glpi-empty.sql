@@ -247,7 +247,6 @@ CREATE TABLE `glpi_savedsearches` (
   KEY `itemtype` (`itemtype`),
   KEY `entities_id` (`entities_id`),
   KEY `users_id` (`users_id`),
-  KEY `is_private` (`is_private`),
   KEY `is_recursive` (`is_recursive`),
   KEY `last_execution_time` (`last_execution_time`),
   KEY `last_execution_date` (`last_execution_date`),
