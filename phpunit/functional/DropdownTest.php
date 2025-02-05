@@ -1435,14 +1435,9 @@ HTML;
                             'id'     => (int)getItemByTypeName('User', 'jsmith123', true),
                             'text'   => 'Smith John',
                             'title'  => 'Smith John - jsmith123',
-                        ],
-                        7 => [
-                            'id'     => (int)getItemByTypeName('User', 'jdoe123', true),
-                            'text'   => 'Doe John',
-                            'title'  => 'Doe John - jdoe123',
                         ]
                     ],
-                    'count' => 7
+                    'count' => 6
                 ]
             ], [
                 'params'    => [
@@ -1476,14 +1471,9 @@ HTML;
                             'id'     => (int)getItemByTypeName('User', 'jsmith123', true),
                             'text'   => 'Smith John',
                             'title'  => 'Smith John - jsmith123',
-                        ],
-                        5 => [
-                            'id'     => (int)getItemByTypeName('User', 'jdoe123', true),
-                            'text'   => 'Doe John',
-                            'title'  => 'Doe John - jdoe123',
                         ]
                     ],
-                    'count' => 5
+                    'count' => 4
                 ]
             ], [
                 'params'    => [
@@ -1510,14 +1500,9 @@ HTML;
                             'id'     => (int)getItemByTypeName('User', 'jsmith123', true),
                             'text'   => 'Smith John',
                             'title'  => 'Smith John - jsmith123',
-                        ],
-                        3 => [
-                            'id'     => (int)getItemByTypeName('User', 'jdoe123', true),
-                            'text'   => 'Doe John',
-                            'title'  => 'Doe John - jdoe123',
                         ]
                     ],
-                    'count' => 3
+                    'count' => 2
                 ]
             ]
         ];
