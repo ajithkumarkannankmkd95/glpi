@@ -59,32 +59,48 @@ class SavedSearchTest extends DbTestCase
 
     public function testAddVisibilityRestrict()
     {
+        global $DB;
         // super-admin
         $this->login();
         $this->assertSame('', \SavedSearch::addVisibilityRestrict());
 
         // no rights on bookmark
         $this->login('normal', 'normal');
-        $visibility_restrict = "`glpi_savedsearches`.`users_id` = '5' ";
+        $visibility_restrict = "`glpi_savedsearches`.`users_id` = '5'";
         $this->assertSame(
             $visibility_restrict,
             \SavedSearch::addVisibilityRestrict()
         );
 
-        // can see public
-        $this->login('jdoe', TU_PASS);
-        $visibility_restrict2 = "((`glpi_savedsearches`.`users_id` = '10' AND (`glpi_savedsearches`.`entities_id` IN ('0', '1', '4', '2', '3'))) OR ((`glpi_savedsearches_usertargets`.`users_id` = '10' OR (`glpi_groups_savedsearches`.`groups_id` IN ('-1') AND ((`glpi_groups_savedsearches`.`no_entity_restriction` = '1') OR ((`glpi_groups_savedsearches`.`entities_id` IN ('0', '1', '4', '2', '3'))))) OR ((`glpi_entities_savedsearches`.`entities_id` IN ('0', '1', '4', '2', '3')))))) ";
+        // temporarily add admin profile and switch to it to test can see public
+        $DB->insert('glpi_profiles_users', [
+            'users_id' => \Session::getLoginUserID(),
+            'profiles_id' => 3,
+            'entities_id' => 0,
+            'is_recursive' => 1
+        ]);
+        // logout -> login to be able to switch to new profile
+        $this->logOut();
+        $this->login('normal', 'normal');
+        \Session::changeProfile(3);
+        $visibility_restrict2 = "((`glpi_savedsearches`.`users_id` = '10' AND (`glpi_savedsearches`.`entities_id` IN ('0', '1', '4', '2', '3'))) OR ((`glpi_savedsearches_usertargets`.`users_id` = '10' OR (`glpi_groups_savedsearches`.`groups_id` IN ('-1') AND ((`glpi_groups_savedsearches`.`no_entity_restriction` = '1') OR ((`glpi_groups_savedsearches`.`entities_id` IN ('0', '1', '4', '2', '3'))))) OR ((`glpi_entities_savedsearches`.`entities_id` IN ('0', '1', '4', '2', '3'))))))";
         $this->assertSame(
             $visibility_restrict2,
             \SavedSearch::addVisibilityRestrict()
         );
         // can see public after moving entity
         $this->setEntity('_test_root_entity', true);
-        $visibility_restrict3 = "((`glpi_savedsearches`.`users_id` = '10' AND ((`glpi_savedsearches`.`entities_id` IN ('4') OR (`glpi_savedsearches`.`is_recursive` = '1' AND `glpi_savedsearches`.`entities_id` IN ('0'))))) OR ((`glpi_savedsearches_usertargets`.`users_id` = '10' OR (`glpi_groups_savedsearches`.`groups_id` IN ('-1') AND ((`glpi_groups_savedsearches`.`no_entity_restriction` = '1') OR (((`glpi_groups_savedsearches`.`entities_id` IN ('4') OR (`glpi_groups_savedsearches`.`is_recursive` = '1' AND `glpi_groups_savedsearches`.`entities_id` IN ('0'))))))) OR (((`glpi_entities_savedsearches`.`entities_id` IN ('4') OR (`glpi_entities_savedsearches`.`is_recursive` = '1' AND `glpi_entities_savedsearches`.`entities_id` IN ('0')))))))) ";
+        $visibility_restrict3 = "((`glpi_savedsearches`.`users_id` = '10' AND ((`glpi_savedsearches`.`entities_id` IN ('4') OR (`glpi_savedsearches`.`is_recursive` = '1' AND `glpi_savedsearches`.`entities_id` IN ('0'))))) OR ((`glpi_savedsearches_usertargets`.`users_id` = '10' OR (`glpi_groups_savedsearches`.`groups_id` IN ('-1') AND ((`glpi_groups_savedsearches`.`no_entity_restriction` = '1') OR (((`glpi_groups_savedsearches`.`entities_id` IN ('4') OR (`glpi_groups_savedsearches`.`is_recursive` = '1' AND `glpi_groups_savedsearches`.`entities_id` IN ('0'))))))) OR (((`glpi_entities_savedsearches`.`entities_id` IN ('4') OR (`glpi_entities_savedsearches`.`is_recursive` = '1' AND `glpi_entities_savedsearches`.`entities_id` IN ('0'))))))))";
         $this->assertSame(
             $visibility_restrict3,
             \SavedSearch::addVisibilityRestrict()
         );
+        $DB->delete('glpi_profiles_users', [
+            'users_id' => \Session::getLoginUserID(),
+            'profiles_id' => 3,
+            'entities_id' => 0,
+            'is_recursive' => 1
+        ]);
     }
 
     public function testGetMine()
@@ -153,7 +169,7 @@ class SavedSearchTest extends DbTestCase
             ])
         );
         $bk_target_entity_id = $bk->getID();
-        $bk2 = new SavedSearch();
+        $bk2 = new \SavedSearch();
         $bk2->getFromDB($bk_target_entity_id);
         $this->assertEquals(1, $bk2->countVisibilities);
 
