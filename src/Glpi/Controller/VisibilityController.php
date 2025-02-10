@@ -57,7 +57,7 @@ class VisibilityController extends GenericFormController
     public function addVisibility(Request $request): RedirectResponse
     {
         $class = $request->attributes->get('class');
-        $item = new $class();
+        $item = getItemForItemtype($class);
         $item->addVisibility($request->request->all());
         return new RedirectResponse(Html::getBackUrl());
     }
