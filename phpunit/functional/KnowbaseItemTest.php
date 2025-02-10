@@ -38,6 +38,8 @@ namespace test\units;
 use DbTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
+use function PHPUnit\Framework\assertTrue;
+
 /* Test for inc/knowbaseitem.class.php */
 
 class KnowbaseItemTest extends DbTestCase
@@ -1620,5 +1622,44 @@ HTML,
                 ]
             )
         );
+    }
+
+    public function testAllowAccessUsingToken()
+    {
+        $kbi = $this->createItem(
+            'KnowbaseItem',
+            [
+                'name' => __METHOD__,
+                'answer' => __METHOD__,
+                'is_faq' => false,
+                'entities_id' => 0,
+                'is_recursive' => 1,
+                'allow_access_using_token' => true,
+            ],
+        );
+
+        $token = $kbi->getField('token');
+
+        // Missing token
+        $this->assertFalse($kbi->canViewItem());
+
+        // Good token
+        $_GET['token'] = $token;
+        $this->assertTrue($kbi->canViewItem());
+
+        // Wrong token
+        $_GET['token'] = "wrong_token_value";
+        $this->assertFalse($kbi->canViewItem());
+
+        // allow_access_using_token disabled
+        $kbi = $this->updateItem(
+            'KnowbaseItem',
+            $kbi->getID(),
+            [
+                'allow_access_using_token' => false,
+            ]
+        );
+        $_GET['token'] = $token;
+        $this->assertFalse($kbi->canViewItem());
     }
 }
