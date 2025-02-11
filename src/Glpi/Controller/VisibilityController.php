@@ -35,10 +35,9 @@
 
 namespace Glpi\Controller;
 
-use Glpi\Controller\GenericFormController;
-use Glpi\Event;
+use Glpi\Exception\Http\AccessDeniedHttpException;
+use Glpi\Exception\Http\BadRequestHttpException;
 use Html;
-use Symfony\Component\HttpFoundation\InputBag;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -58,7 +57,16 @@ class VisibilityController extends GenericFormController
     {
         $class = $request->attributes->get('class');
         $item = getItemForItemtype($class);
-        $item->addVisibility($request->request->all());
-        return new RedirectResponse(Html::getBackUrl());
+        $fk_field = getForeignKeyFieldForItemType($class);
+        if ($item instanceof \CommonDBVisible) {
+            if ($item->canEdit($request->request->get($fk_field))) {
+                $item->addVisibility($request->request->all());
+                return new RedirectResponse(Html::getBackUrl());
+            } else {
+                throw new AccessDeniedHttpException();
+            }
+        } else {
+            throw new BadRequestHttpException("Invalid class");
+        }
     }
 }
