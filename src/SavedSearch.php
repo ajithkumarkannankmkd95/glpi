@@ -234,7 +234,7 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
     {
         if (self::canView()) {
             $nb = 0;
-            switch ($item->getType()) {
+            switch ($item::class) {
                 case SavedSearch::class:
                     if (self::canCreatePublic()) {
                         if ($_SESSION['glpishow_count_on_tabs']) {
@@ -274,8 +274,8 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
      **/
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
-        switch ($item->getType()) {
-            case 'SavedSearch':
+        switch ($item::class) {
+            case SavedSearch::class:
                 $item->showVisibility();
                 return true;
         }
@@ -1322,39 +1322,39 @@ class SavedSearch extends CommonDBVisible implements ExtraVisibilityCriteria
         }
 
         $restrict = [
-            'OR' => [$owner_restrict]
-        ];
-        if (Session::haveRight(self::$rightname, READ)) {
-            $restrict['OR'][] = [
-                'OR' => [
-                    // directly targeted
-                    $user_table . '.users_id' => Session::getLoginUserID(),
-                    // targeted through groups
-                    [
-                        $group_table . '.groups_id' => count($_SESSION["glpigroups"])
-                            ? $_SESSION["glpigroups"]
-                            : [-1],
-                        'OR' => [
-                            [$group_table . '.no_entity_restriction' => 1],
-                            getEntitiesRestrictCriteria(
-                                $group_table,
-                                '',
-                                $_SESSION['glpiactiveentities'],
-                                true
-                            )
-                        ]
-                    ],
-                    // targeted through entities
-                    getEntitiesRestrictCriteria(
-                        $entity_table,
-                        '',
-                        '',
-                        true,
-                        true
-                    )
+            'OR' => [
+                $owner_restrict,
+                [
+                    'OR' => [
+                        // directly targeted
+                        $user_table . '.users_id' => Session::getLoginUserID(),
+                        // targeted through groups
+                        [
+                            $group_table . '.groups_id' => count($_SESSION["glpigroups"])
+                                ? $_SESSION["glpigroups"]
+                                : [-1],
+                            'OR' => [
+                                [$group_table . '.no_entity_restriction' => 1],
+                                getEntitiesRestrictCriteria(
+                                    $group_table,
+                                    '',
+                                    $_SESSION['glpiactiveentities'],
+                                    true
+                                )
+                            ]
+                        ],
+                        // targeted through entities
+                        getEntitiesRestrictCriteria(
+                            $entity_table,
+                            '',
+                            '',
+                            true,
+                            true
+                        )
+                    ]
                 ]
-            ];
-        }
+            ]
+        ];
         $criteria['WHERE'] = $restrict;
 
         return $criteria;

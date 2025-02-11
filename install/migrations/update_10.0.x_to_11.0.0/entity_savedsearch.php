@@ -47,7 +47,7 @@ if (!$DB->tableExists('glpi_entities_savedsearches')) {
         `id` int {$default_key_sign} NOT NULL AUTO_INCREMENT,
         `savedsearches_id` int {$default_key_sign}  NOT NULL DEFAULT '0',
         `entities_id` int {$default_key_sign}  NOT NULL DEFAULT '0',
-        `is_recursive` tinyint(1) NOT NULL DEFAULT '0',
+        `is_recursive` tinyint NOT NULL DEFAULT '0',
         PRIMARY KEY (`id`),
         KEY `savedsearches_id` (`savedsearches_id`),
         KEY `entities_id` (`entities_id`),
