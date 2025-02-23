@@ -88,7 +88,6 @@ class TitleField extends AbstractConfigField
                     'toolbar'          : false,
                     'editor_height'    : 0,
                     'statusbar'        : false,
-                    'rand'             : rand,
                     'single_line'      : true,
                 })
             ) }}
