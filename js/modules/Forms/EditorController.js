@@ -1286,14 +1286,12 @@ export class GlpiFormEditorController
                     extra_data[matches[1]][matches[2]] = {};
                 }
                 extra_data[matches[1]][matches[2]] = input.value;
-                console.log(matches);
             } else {
                 // Simple value
                 extra_data[name] = input.value;
             }
         }
 
-        console.log(extra_data);
         return extra_data;
     }
 
