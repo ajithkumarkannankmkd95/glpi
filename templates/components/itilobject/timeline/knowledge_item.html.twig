@@ -30,6 +30,7 @@
  #
  # ---------------------------------------------------------------------
  #}
+
 {% import 'components/form/fields_macros.html.twig' as fields %}
 
 {% set search_button %}
@@ -40,14 +41,15 @@
 {% endset %}
 {{
     fields.field(
-    '',
-    search_button,
-    '',
-    {
-    'full_width': true,
-    'icon_label': true,
-    }
-) }}
+        '',
+        search_button,
+        '',
+        {
+            'full_width': true,
+            'icon_label': true,
+        }
+    )
+}}
 
 <script>
     $('button[name="search_{{ itiltype }}"]').on('click', () => {
