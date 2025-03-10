@@ -826,7 +826,7 @@ describe ('Conditions', () => {
         ]);
     });
 
-    it('can apply all supported conditions types', () => {
+    it.only('can apply all supported conditions types', () => {
         createForm();
 
         // Init test question on which we will add our conditions.
@@ -856,6 +856,15 @@ describe ('Conditions', () => {
 
         addQuestion('My request type question');
         setQuestionTypeCategory('Request type');
+
+        addQuestion('My radio question');
+        setQuestionTypeCategory('Radio');
+        getAndFocusQuestion('My radio question').within(() => {
+            cy.findByPlaceholderText('Enter an option').type('Option 1{enter}');
+        });
+        cy.focused().type('Option 2{enter}');
+        cy.focused().type('Option 3{enter}');
+        cy.focused().type('Option 4');
 
         // Add a condition for each possible condition types
         getAndFocusQuestion('Test subject').within(() => {
@@ -924,6 +933,15 @@ describe ('Conditions', () => {
                 'Request',
                 'dropdown',
             );
+            addNewEmptyCondition();
+            fillCondition(
+                7,
+                'And',
+                'My radio question',
+                'Is not equal to',
+                'Option 3',
+                'dropdown',
+            );
         });
 
         // Reload and check values
@@ -984,6 +1002,14 @@ describe ('Conditions', () => {
                 'My request type question',
                 'Is equal to',
                 'Request',
+                'dropdown',
+            );
+            checkThatConditionExist(
+                7,
+                'And',
+                'My radio question',
+                'Is not equal to',
+                'Option 3',
                 'dropdown',
             );
         });

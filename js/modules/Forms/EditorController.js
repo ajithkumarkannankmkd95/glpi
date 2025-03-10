@@ -1268,8 +1268,13 @@ export class GlpiFormEditorController
                 name = input.name;
             }
 
-            if (name.indexOf("[") !== -1 && name.indexOf("]") !== -1) {
-                // Handle arrays
+            const is_map = name.indexOf("[") !== -1
+                && name.indexOf("]") !== -1
+                && name.indexOf("[]") === -1
+            ;
+
+            if (is_map) {
+                // Handle complex arrays with key and values
                 const matches = name.match(/^(.*)\[(.*)\]$/);
                 if (matches === null) {
                     throw new Error(`Unexpected input name: ${name}`);
@@ -1277,7 +1282,10 @@ export class GlpiFormEditorController
                 if (extra_data[matches[1]] === undefined) {
                     extra_data[matches[1]] = {};
                 }
-                extra_data[matches[1]] = matches[2];
+                if (extra_data[matches[1]][matches[2]] === undefined) {
+                    extra_data[matches[1]][matches[2]] = {};
+                }
+                extra_data[matches[1]][matches[2]] = input.value;
                 console.log(matches);
             } else {
                 // Simple value
