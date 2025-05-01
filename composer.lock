@@ -907,16 +907,16 @@
         },
         {
             "name": "glpi-project/inventory_format",
-            "version": "1.2.1",
+            "version": "1.2.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/glpi-project/inventory_format.git",
-                "reference": "43d60d8a5c7f1e3609aac40c7e716e74ebcae025"
+                "reference": "07ae1085aa58fac19bf1b8ef87478823c6a94d02"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/glpi-project/inventory_format/zipball/43d60d8a5c7f1e3609aac40c7e716e74ebcae025",
-                "reference": "43d60d8a5c7f1e3609aac40c7e716e74ebcae025",
+                "url": "https://api.github.com/repos/glpi-project/inventory_format/zipball/07ae1085aa58fac19bf1b8ef87478823c6a94d02",
+                "reference": "07ae1085aa58fac19bf1b8ef87478823c6a94d02",
                 "shasum": ""
             },
             "require": {
@@ -935,7 +935,7 @@
                 "phpstan/phpstan": "^1.12",
                 "phpstan/phpstan-deprecation-rules": "^1.2",
                 "phpunit/phpunit": "^9.6",
-                "squizlabs/php_codesniffer": "^3.11"
+                "squizlabs/php_codesniffer": "^3.12"
             },
             "bin": [
                 "bin/convert",
@@ -976,7 +976,7 @@
                 "issues": "https://github.com/glpi-project/inventory_format/issues",
                 "source": "https://github.com/glpi-project/inventory_format"
             },
-            "time": "2025-02-10T14:53:31+00:00"
+            "time": "2025-04-07T14:30:09+00:00"
         },
         {
             "name": "guzzlehttp/guzzle",
@@ -5603,20 +5603,21 @@
         },
         {
             "name": "swaggest/json-diff",
-            "version": "v3.11.0",
+            "version": "v3.12.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/swaggest/json-diff.git",
-                "reference": "c55d38a3cb372753b5d5ee4c9b7d8470e486e6a5"
+                "reference": "7ebc4eab95bcc73916433964c266588d09b35052"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/swaggest/json-diff/zipball/c55d38a3cb372753b5d5ee4c9b7d8470e486e6a5",
-                "reference": "c55d38a3cb372753b5d5ee4c9b7d8470e486e6a5",
+                "url": "https://api.github.com/repos/swaggest/json-diff/zipball/7ebc4eab95bcc73916433964c266588d09b35052",
+                "reference": "7ebc4eab95bcc73916433964c266588d09b35052",
                 "shasum": ""
             },
             "require": {
-                "ext-json": "*"
+                "ext-json": "*",
+                "php": ">=7.1"
             },
             "require-dev": {
                 "phperf/phpunit": "4.8.37"
@@ -5640,9 +5641,9 @@
             "description": "JSON diff/rearrange/patch/pointer library for PHP",
             "support": {
                 "issues": "https://github.com/swaggest/json-diff/issues",
-                "source": "https://github.com/swaggest/json-diff/tree/v3.11.0"
+                "source": "https://github.com/swaggest/json-diff/tree/v3.12.1"
             },
-            "time": "2024-07-02T11:32:10+00:00"
+            "time": "2025-03-10T08:22:10+00:00"
         },
         {
             "name": "swaggest/json-schema",
