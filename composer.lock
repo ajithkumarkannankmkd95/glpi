@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "daa2259e84f68e8234f49f0c619ff6f4",
+    "content-hash": "3f5ee54fae8fb6e5518bae17e240d750",
     "packages": [
         {
             "name": "apereo/phpcas",
@@ -2236,16 +2236,16 @@
         },
         {
             "name": "league/csv",
-            "version": "9.22.0",
+            "version": "9.24.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/thephpleague/csv.git",
-                "reference": "afc109aa11f3086b8be8dfffa04ac31480b36b76"
+                "reference": "e0221a3f16aa2a823047d59fab5809d552e29bc8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thephpleague/csv/zipball/afc109aa11f3086b8be8dfffa04ac31480b36b76",
-                "reference": "afc109aa11f3086b8be8dfffa04ac31480b36b76",
+                "url": "https://api.github.com/repos/thephpleague/csv/zipball/e0221a3f16aa2a823047d59fab5809d552e29bc8",
+                "reference": "e0221a3f16aa2a823047d59fab5809d552e29bc8",
                 "shasum": ""
             },
             "require": {
@@ -2255,14 +2255,14 @@
             "require-dev": {
                 "ext-dom": "*",
                 "ext-xdebug": "*",
-                "friendsofphp/php-cs-fixer": "^3.69.0",
-                "phpbench/phpbench": "^1.4.0",
-                "phpstan/phpstan": "^1.12.18",
+                "friendsofphp/php-cs-fixer": "^3.75.0",
+                "phpbench/phpbench": "^1.4.1",
+                "phpstan/phpstan": "^1.12.27",
                 "phpstan/phpstan-deprecation-rules": "^1.2.1",
                 "phpstan/phpstan-phpunit": "^1.4.2",
                 "phpstan/phpstan-strict-rules": "^1.6.2",
-                "phpunit/phpunit": "^10.5.16 || ^11.5.7",
-                "symfony/var-dumper": "^6.4.8 || ^7.2.3"
+                "phpunit/phpunit": "^10.5.16 || ^11.5.22",
+                "symfony/var-dumper": "^6.4.8 || ^7.3.0"
             },
             "suggest": {
                 "ext-dom": "Required to use the XMLConverter and the HTMLConverter classes",
@@ -2323,7 +2323,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2025-02-28T10:00:39+00:00"
+            "time": "2025-06-25T14:53:51+00:00"
         },
         {
             "name": "league/event",
